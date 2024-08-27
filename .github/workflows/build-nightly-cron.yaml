@@ -112,6 +112,7 @@ jobs:
       - name: Runner Debug Information
         id: debug-info
         run: |
+          cp -v ${{ env.SOURCECODE_DIR }}/project/package.json .
           cd ${{ env.SOURCECODE_DIR }}
           echo "git version: $(git --version)"
           echo "git lfs version: $(git-lfs --version)"
@@ -128,7 +129,7 @@ jobs:
         with:
           path: |
             ${{ env.SOURCECODE_DIR }}/project/node_modules
-          key: ${{ runner.os }}-npm-dependencies-${{ hashFiles('${{ env.SOURCECODE_DIR }}/project/package.json') }}
+          key: ${{ runner.os }}-npm-dependencies-${{ hashFiles('package.json') }}
           restore-keys: |
             ${{ runner.os }}-npm-dependencies-
 
