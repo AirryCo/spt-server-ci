@@ -1,0 +1,127 @@
+name: SPT-Server Manual Build
+
+on:
+  push:
+    paths:
+      - '.github/workflows/build-nightly-manual.yaml'
+
+env:
+  SERVER_URL: https://dev.sp-tarkov.com
+  REPOSITORY_SERVER: SPT/Server
+  REPOSITORY_SERVER_MEDUSA: medusa/spt-server
+  NIGHTLY_BRANCH: 3.10.0-DEV
+  SOURCECODE_DIR: c:/code
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      SPT_VERSION: ${{ steps.versions.outputs.SPT_VERSION }}
+      EFT_VERSION: ${{ steps.versions.outputs.EFT_VERSION }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Extract versions
+        id: versions
+        run: |
+          # Extract versions from core.json
+          wget ${{ env.SERVER_URL }}/${{ env.REPOSITORY_SERVER_MEDUSA }}/raw/branch/${{ env.NIGHTLY_BRANCH }}/project/assets/configs/core.json
+          SPT_VERSION=$(jq -r '.sptVersion' core.json)
+          EFT_VERSION=$(jq -r '.compatibleTarkovVersion' core.json)
+ 
+          echo "👽 SPT_VERSION = $SPT_VERSION"
+          echo "👽 EFT_VERSION = $EFT_VERSION"
+          echo "SPT_VERSION=$SPT_VERSION" >> $GITHUB_OUTPUT
+          echo "EFT_VERSION=$EFT_VERSION" >> $GITHUB_OUTPUT
+        shell: bash
+
+  build-server:
+    needs: prepare
+    runs-on: windows-latest
+    env:
+      OUTPUT_DIR: spt-server
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Setup Git Config
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "bot@github.com"
+
+      - name: Clone Medusa's Server Code
+        run: |
+          git clone ${{ env.SERVER_URL }}/${{ env.REPOSITORY_SERVER_MEDUSA }} ${{ env.SOURCECODE_DIR }}
+          cd ${{ env.SOURCECODE_DIR }}
+          git checkout ${{ env.NIGHTLY_BRANCH }}_windows
+          git lfs pull
+        shell: bash
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.11.1
+
+      - name: Runner Debug Information
+        id: debug-info
+        run: |
+          cd ${{ env.SOURCECODE_DIR }}
+          echo "git version: $(git --version)"
+          echo "git lfs version: $(git-lfs --version)"
+          echo "node.js version: $(node --version)"
+          echo "npm version: $(npm --version)"
+          echo "👽 latest commit hash: $(git rev-parse HEAD)"
+          echo "👽 last commit message:" && git log -1 --pretty=%B
+          echo "COMMIT_ID=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+        shell: bash
+
+      - name: Cache NPM Dependencies
+        id: cache-npm-dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ${{ env.SOURCECODE_DIR }}/project/node_modules
+          key: ${{ runner.os }}-npm-dependencies-${{ hashFiles('${{ env.SOURCECODE_DIR }}/project/package.json') }}
+          restore-keys: |
+            ${{ runner.os }}-npm-dependencies-
+
+      - name: Install NPM Dependencies
+        if: steps.cache-npm-dependencies.outputs.cache-hit != 'true'
+        run: |
+          cd ${{ env.SOURCECODE_DIR }}/project
+          npm install
+        shell: pwsh
+
+      - name: Build Server
+        id: build-server
+        run: |
+          cd ${{ env.SOURCECODE_DIR }}/project
+          npm run build:release
+          ls -l build
+          mv build ${{ env.OUTPUT_DIR }}
+          echo "date_time=$(date +%Y%m%d%H%M%S)" >> $GITHUB_OUTPUT
+        shell: bash
+
+      - name: Generate File Name
+        id: filename
+        run: |
+          date_time=$(date +%Y%m%d%H%M%S)
+          artifact_name=${{ env.OUTPUT_DIR }}-artifact-win-${{ env.NIGHTLY_BRANCH }}-nightly-${{ steps.debug-info.outputs.COMMIT_ID }}-EFT${{ needs.prepare.outputs.EFT_VERSION }}-${date_time}
+          release_name=${{ env.OUTPUT_DIR }}-win-${{ env.NIGHTLY_BRANCH }}-nightly-${{ steps.debug-info.outputs.COMMIT_ID }}-EFT${{ needs.prepare.outputs.EFT_VERSION }}-${date_time}.zip
+          echo "DATE_TIME=$date_time" >> $GITHUB_OUTPUT
+          echo "ARTIFACT=$artifact_name" >> $GITHUB_OUTPUT
+          echo "RELEASE=$release_name" >> $GITHUB_OUTPUT
+        shell: bash
+
+      - name: Artifact Server
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ steps.filename.outputs.ARTIFACT }}
+          path: ${{ env.SOURCECODE_DIR }}/project/${{ env.OUTPUT_DIR }}
+          overwrite: true
+

@@ -1,0 +1,217 @@
+name: SPT-Server Build Nightly On Schedule
+
+on:
+  schedule:
+    - cron: '0 */12 * * *'
+  push:
+    paths:
+      - '.github/workflows/build-nightly-cron.yaml'
+
+env:
+  SERVER_URL: https://dev.sp-tarkov.com
+  REPOSITORY_SERVER: SPT/Server
+  REPOSITORY_SERVER_MEDUSA: medusa/spt-server
+  NIGHTLY_BRANCH: 3.10.0-DEV
+  SOURCECODE_DIR: c:/code
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      PROCEED: ${{ steps.compare-hash.outputs.PROCEED }}
+      BUILT_HASH: ${{ steps.compare-hash.outputs.BUILT_HASH }}
+      SPT_VERSION: ${{ steps.versions.outputs.SPT_VERSION }}
+      EFT_VERSION: ${{ steps.versions.outputs.EFT_VERSION }}
+      SERVER_COMMIT: ${{ steps.versions.outputs.SERVER_COMMIT }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Get Latest Commit From SPT
+        id: get-latest-commit
+        run: |
+          SERVER_LATEST_COMMIT_HASH=$(git ls-remote ${{ env.SERVER_URL }}/${{ env.REPOSITORY_SERVER }}.git refs/heads/${{ env.NIGHTLY_BRANCH }} | awk '{print $1}')
+          echo "👽 SERVER_LATEST_COMMIT_HASH = $SERVER_LATEST_COMMIT_HASH"
+          echo "SERVER_LATEST_COMMIT_HASH=$SERVER_LATEST_COMMIT_HASH" >> $GITHUB_OUTPUT
+        shell: bash
+      - name: Compare Hashes
+        id: compare-hash
+        run: |
+          source trigger.nightly
+          server_last_build_hash=$server
+          server_latest_commit_hash=${{ steps.get-latest-commit.outputs.SERVER_LATEST_COMMIT_HASH }}
+          if [ "$server_last_build_hash" != "$server_latest_commit_hash" ]; then
+            echo "✅ There is different between last-built-hash and lastest-commit-hash, continue to build."
+            echo "BUILT_HASH=$server_last_build_hash" >> $GITHUB_OUTPUT
+            echo "PROCEED=true" >> $GITHUB_OUTPUT
+          else
+            echo "✋ last-built-hash and latest-commit-hash are the same, stop building."
+            echo "PROCEED=false" >> $GITHUB_OUTPUT
+          fi
+        shell: bash
+      - name: Extract versions
+        id: versions
+        if: steps.compare-hash.outputs.PROCEED == 'true'
+        run: |
+          SERVER_COMMIT=${{ steps.get-latest-commit.outputs.SERVER_LATEST_COMMIT_HASH }}
+
+          # Extract versions from core.json
+          wget ${{ env.SERVER_URL }}/${{ env.REPOSITORY_SERVER }}/raw/branch/${{ env.NIGHTLY_BRANCH }}/project/assets/configs/core.json
+          SPT_VERSION=$(jq -r '.sptVersion' core.json)
+          EFT_VERSION=$(jq -r '.compatibleTarkovVersion' core.json)
+
+          echo "👽 SPT_VERSION = $SPT_VERSION"
+          echo "👽 EFT_VERSION = $EFT_VERSION"
+          echo "👽 SERVER_COMMIT = $SERVER_COMMIT"
+          echo "SPT_VERSION=$SPT_VERSION" >> $GITHUB_OUTPUT
+          echo "EFT_VERSION=$EFT_VERSION" >> $GITHUB_OUTPUT
+          echo "SERVER_COMMIT=$SERVER_COMMIT" >> $GITHUB_OUTPUT
+        shell: bash
+
+  build-server:
+    needs: prepare
+    if: ${{ needs.prepare.outputs.PROCEED == 'true' }}
+    runs-on: windows-latest
+    env:
+      OUTPUT_DIR: spt-server
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Setup Git Config
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "bot@github.com"
+
+      - name: Clone Medusa's Server Code
+        run: |
+          git clone ${{ env.SERVER_URL }}/${{ env.REPOSITORY_SERVER_MEDUSA }} ${{ env.SOURCECODE_DIR }}
+          cd ${{ env.SOURCECODE_DIR }}
+          git checkout ${{ env.NIGHTLY_BRANCH }}_windows
+          git lfs pull
+        shell: bash
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.11.1
+
+      - name: Merge Server Code From SPT
+        run: |
+          cd ${{ env.SOURCECODE_DIR }}
+          git checkout ${{ env.NIGHTLY_BRANCH }}_windows
+          git pull
+          git fetch -u ${{ env.SERVER_URL }}/${{ env.REPOSITORY_SERVER }}.git ${{ env.NIGHTLY_BRANCH }}:SPT-${{ env.NIGHTLY_BRANCH }}
+          git merge -m "🤖 Merge branch '${{ env.NIGHTLY_BRANCH }}' from SPT" --no-ff SPT-${{ env.NIGHTLY_BRANCH }}
+        shell: bash
+
+      - name: Runner Debug Information
+        id: debug-info
+        run: |
+          cd ${{ env.SOURCECODE_DIR }}
+          echo "git version: $(git --version)"
+          echo "git lfs version: $(git-lfs --version)"
+          echo "node.js version: $(node --version)"
+          echo "npm version: $(npm --version)"
+          echo "latest commit hash: $(git rev-parse HEAD)"
+          echo "last commit message:" && git log -1 --pretty=%B
+          echo "COMMIT_ID=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+        shell: bash
+
+      - name: Cache NPM Dependencies
+        id: cache-npm-dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ${{ env.SOURCECODE_DIR }}/project/node_modules
+          key: ${{ runner.os }}-npm-dependencies-${{ hashFiles('${{ env.SOURCECODE_DIR }}/project/package.json') }}
+          restore-keys: |
+            ${{ runner.os }}-npm-dependencies-
+
+      - name: Install NPM Dependencies
+        if: steps.cache-npm-dependencies.outputs.cache-hit != 'true'
+        run: |
+          cd ${{ env.SOURCECODE_DIR }}/project
+          npm install
+        shell: pwsh
+
+      - name: Build Server
+        id: build-server
+        run: |
+          cd ${{ env.SOURCECODE_DIR }}/project
+          npm run build:release
+          ls -l build
+          mv build ${{ env.OUTPUT_DIR }}
+          echo "date_time=$(date +%Y%m%d%H%M%S)" >> $GITHUB_OUTPUT
+        shell: bash
+
+      - name: Generate File Name
+        id: filename
+        run: |
+          date_time=$(date +%Y%m%d%H%M%S)
+          artifact_name=${{ env.OUTPUT_DIR }}-artifact-${{ env.NIGHTLY_BRANCH }}-nightly-${{ steps.debug-info.outputs.COMMIT_ID }}-EFT${{ needs.prepare.outputs.EFT_VERSION }}-${date_time}
+          release_name=${{ env.OUTPUT_DIR }}-${{ env.NIGHTLY_BRANCH }}-nightly-${{ steps.debug-info.outputs.COMMIT_ID }}-EFT${{ needs.prepare.outputs.EFT_VERSION }}-${date_time}.zip
+          echo "DATE_TIME=$date_time" >> $GITHUB_OUTPUT
+          echo "ARTIFACT=$artifact_name" >> $GITHUB_OUTPUT
+          echo "RELEASE=$release_name" >> $GITHUB_OUTPUT
+        shell: bash
+
+      - name: Artifact Server
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ steps.filename.outputs.ARTIFACT }}
+          path: ${{ env.SOURCECODE_DIR }}/project/${{ env.OUTPUT_DIR }}
+          overwrite: true
+
+      - name: Push code
+        run: |
+          git pull
+          rm trigger.nightly
+          server=${{ needs.prepare.outputs.SERVER_COMMIT }}
+          echo "server=$server" > trigger.nightly
+          git add trigger.nightly
+          git commit -m "🤖 up to \`$server\`."
+          git push
+        shell: bash
+
+      - name: Push Server Code
+        run: |
+          cd ${{ env.SOURCECODE_DIR }}
+          git pull
+          REMOTE_URL="https://medusa:${{ secrets.GIT_PUSH_TO_SPT }}@dev.sp-tarkov.com/${{ env.REPOSITORY_SERVER_MEDUSA }}.git"
+          git remote set-url origin "$REMOTE_URL"
+          git push
+        shell: bash
+
+      - name: Compress Archive
+        id: compress-archive
+        run: |
+          Compress-Archive ${{ env.SOURCECODE_DIR }}/project/${{ env.OUTPUT_DIR }} ${{ steps.filename.outputs.RELEASE }}
+          echo "archive: ${{ steps.filename.outputs.RELEASE }}"
+          dir
+        shell: pwsh
+
+      - name: Create Pre-release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: ${{ steps.filename.outputs.DATE_TIME }}
+          tag_name: ${{ steps.filename.outputs.DATE_TIME }}
+          prerelease: true
+          body: |
+            SPT: ***${{ needs.prepare.outputs.SPT_VERSION }}***
+            Server commit: [${{ steps.debug-info.outputs.COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SERVER_MEDUSA }}/src/commit/${{ steps.debug-info.outputs.COMMIT_ID }})
+            Tarkov: ***${{ needs.prepare.outputs.EFT_VERSION }}***
+            Build time: ***${{ steps.filename.outputs.DATE_TIME }}***
+
+            > [!WARNING]
+            > After downloading, please use extraction software like WinRAR or [7-Zip](https://www.7-zip.org/) to unzip the files, then copy them to the Tarkov root directory. Do not use Windows File Explorer to directly open and copy the files.
+
+            Full Changelog: [${{ needs.prepare.outputs.BUILT_HASH }}....${{ steps.debug-info.outputs.COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SERVER_MEDUSA }}/compare/${{ needs.prepare.outputs.BUILT_HASH }}...${{ steps.debug-info.outputs.COMMIT_ID }})
+
+          files: |
+            ${{ steps.filename.outputs.RELEASE }}
+
