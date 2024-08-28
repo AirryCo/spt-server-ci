@@ -12,7 +12,6 @@ env:
   REPOSITORY_SERVER: SPT/Server
   REPOSITORY_SERVER_MEDUSA: medusa/spt-server
   NIGHTLY_BRANCH: 3.10.0-DEV
-  SOURCECODE_DIR: c:/code
 
 jobs:
   prepare:
@@ -23,6 +22,7 @@ jobs:
       SPT_VERSION: ${{ steps.versions.outputs.SPT_VERSION }}
       EFT_VERSION: ${{ steps.versions.outputs.EFT_VERSION }}
       SERVER_COMMIT: ${{ steps.versions.outputs.SERVER_COMMIT }}
+      BUILD_DATE_TIME: ${{ steps.versions.outputs.DATE_TIME }}
 
     steps:
       - name: Checkout
@@ -68,14 +68,20 @@ jobs:
           echo "SPT_VERSION=$SPT_VERSION" >> $GITHUB_OUTPUT
           echo "EFT_VERSION=$EFT_VERSION" >> $GITHUB_OUTPUT
           echo "SERVER_COMMIT=$SERVER_COMMIT" >> $GITHUB_OUTPUT
+          echo "DATE_TIME=$(date +%Y%m%d%H%M%S)" >> $GITHUB_OUTPUT
         shell: bash
 
-  build-server:
+  build-server-windows:
     needs: prepare
     if: ${{ needs.prepare.outputs.PROCEED == 'true' }}
     runs-on: windows-latest
     env:
       OUTPUT_DIR: spt-server
+      SOURCECODE_DIR: c:/code
+    outputs:
+      WIN_COMMIT_ID: ${{ steps.debug-info.outputs.COMMIT_ID }}
+      WIN_ARTIFACT: ${{ steps.filename.outputs.WIN_ARTIFACT }}
+      WIN_RELEASE_FILE: ${{ steps.filename.outputs.WIN_RELEASE }}
 
     steps:
       - name: Checkout
@@ -147,27 +153,155 @@ jobs:
           npm run build:release
           ls -l build
           mv build ${{ env.OUTPUT_DIR }}
-          echo "date_time=$(date +%Y%m%d%H%M%S)" >> $GITHUB_OUTPUT
         shell: bash
 
       - name: Generate File Name
         id: filename
         run: |
-          date_time=$(date +%Y%m%d%H%M%S)
-          artifact_name=${{ env.OUTPUT_DIR }}-artifact-${{ env.NIGHTLY_BRANCH }}-nightly-${{ steps.debug-info.outputs.COMMIT_ID }}-EFT${{ needs.prepare.outputs.EFT_VERSION }}-${date_time}
-          release_name=${{ env.OUTPUT_DIR }}-${{ env.NIGHTLY_BRANCH }}-nightly-${{ steps.debug-info.outputs.COMMIT_ID }}-EFT${{ needs.prepare.outputs.EFT_VERSION }}-${date_time}.zip
-          echo "DATE_TIME=$date_time" >> $GITHUB_OUTPUT
-          echo "ARTIFACT=$artifact_name" >> $GITHUB_OUTPUT
-          echo "RELEASE=$release_name" >> $GITHUB_OUTPUT
+          artifact_name=${{ env.OUTPUT_DIR }}-${{ needs.prepare.outputs.SPT_VERSION }}-win-nightly-${{ steps.debug-info.outputs.COMMIT_ID }}-EFT${{ needs.prepare.outputs.EFT_VERSION }}-${{ needs.prepare.outputs.BUILD_DATE_TIME }}-artifact
+          release_name=${{ env.OUTPUT_DIR }}-${{ needs.prepare.outputs.SPT_VERSION }}-win-nightly-${{ steps.debug-info.outputs.COMMIT_ID }}-EFT${{ needs.prepare.outputs.EFT_VERSION }}-${{ needs.prepare.outputs.BUILD_DATE_TIME }}.zip
+          echo "WIN_ARTIFACT=$artifact_name" >> $GITHUB_OUTPUT
+          echo "WIN_RELEASE=$release_name" >> $GITHUB_OUTPUT
         shell: bash
 
       - name: Artifact Server
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
-          name: ${{ steps.filename.outputs.ARTIFACT }}
+          name: ${{ steps.filename.outputs.WIN_ARTIFACT }}
           path: ${{ env.SOURCECODE_DIR }}/project/${{ env.OUTPUT_DIR }}
           overwrite: true
 
+      - name: Push Server Code
+        run: |
+          cd ${{ env.SOURCECODE_DIR }}
+          git pull
+          REMOTE_URL="https://medusa:${{ secrets.GIT_PUSH_TO_SPT }}@dev.sp-tarkov.com/${{ env.REPOSITORY_SERVER_MEDUSA }}.git"
+          git remote set-url origin "$REMOTE_URL"
+          git push
+        shell: bash
+
+  build-server-linux:
+    needs: prepare
+    if: ${{ needs.prepare.outputs.PROCEED == 'true' }}
+    runs-on: ubuntu-latest
+    env:
+      OUTPUT_DIR: spt-server
+      SOURCECODE_DIR: /code
+    outputs:
+      LINUX_COMMIT_ID: ${{ steps.debug-info.outputs.COMMIT_ID }}
+      LINUX_ARTIFACT: ${{ steps.filename.outputs.LINUX_ARTIFACT }}
+      LINUX_RELEASE_FILE: ${{ steps.filename.outputs.LINUX_RELEASE }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Setup Git Config
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "bot@github.com"
+
+      - name: Clone Medusa's Server Code
+        run: |
+          git clone ${{ env.SERVER_URL }}/${{ env.REPOSITORY_SERVER_MEDUSA }} ${{ env.SOURCECODE_DIR }}
+          cd ${{ env.SOURCECODE_DIR }}
+          git checkout ${{ env.NIGHTLY_BRANCH }}
+          git lfs pull
+        shell: bash
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.11.1
+
+      - name: Merge Server Code From SPT
+        run: |
+          cd ${{ env.SOURCECODE_DIR }}
+          git checkout ${{ env.NIGHTLY_BRANCH }}
+          git pull
+          git fetch -u ${{ env.SERVER_URL }}/${{ env.REPOSITORY_SERVER }}.git ${{ env.NIGHTLY_BRANCH }}:SPT-${{ env.NIGHTLY_BRANCH }}
+          git merge -m "🤖 Merge branch '${{ env.NIGHTLY_BRANCH }}' from SPT" --no-ff SPT-${{ env.NIGHTLY_BRANCH }}
+        shell: bash
+
+      - name: Runner Debug Information
+        id: debug-info
+        run: |
+          cp -v ${{ env.SOURCECODE_DIR }}/project/package.json .
+          cd ${{ env.SOURCECODE_DIR }}
+          echo "git version: $(git --version)"
+          echo "git lfs version: $(git-lfs --version)"
+          echo "node.js version: $(node --version)"
+          echo "npm version: $(npm --version)"
+          echo "latest commit hash: $(git rev-parse HEAD)"
+          echo "last commit message:" && git log -1 --pretty=%B
+          echo "COMMIT_ID=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+        shell: bash
+
+      - name: Cache NPM Dependencies
+        id: cache-npm-dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ${{ env.SOURCECODE_DIR }}/project/node_modules
+          key: ${{ runner.os }}-npm-dependencies-${{ hashFiles('package.json') }}
+          restore-keys: |
+            ${{ runner.os }}-npm-dependencies-
+
+      - name: Install NPM Dependencies
+        if: steps.cache-npm-dependencies.outputs.cache-hit != 'true'
+        run: |
+          cd ${{ env.SOURCECODE_DIR }}/project
+          npm install
+        shell: bash
+
+      - name: Build Server
+        id: build-server
+        run: |
+          cd ${{ env.SOURCECODE_DIR }}/project
+          npm run build:release
+          ls -l build
+          mv build ${{ env.OUTPUT_DIR }}
+        shell: bash
+
+      - name: Generate File Name
+        id: filename
+        run: |
+          artifact_name=${{ env.OUTPUT_DIR }}-${{ needs.prepare.outputs.SPT_VERSION }}-linux-nightly-${{ steps.debug-info.outputs.COMMIT_ID }}-EFT${{ needs.prepare.outputs.EFT_VERSION }}-${{ needs.prepare.outputs.BUILD_DATE_TIME }}-artifact
+          release_name=${{ env.OUTPUT_DIR }}-${{ needs.prepare.outputs.SPT_VERSION }}-linux-nightly-${{ steps.debug-info.outputs.COMMIT_ID }}-EFT${{ needs.prepare.outputs.EFT_VERSION }}-${{ needs.prepare.outputs.BUILD_DATE_TIME }}.zip
+          echo "LINUX_ARTIFACT=$artifact_name" >> $GITHUB_OUTPUT
+          echo "LINUX_RELEASE=$release_name" >> $GITHUB_OUTPUT
+        shell: bash
+
+      - name: Artifact Server
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.filename.outputs.LINUX_ARTIFACT }}
+          path: ${{ env.SOURCECODE_DIR }}/project/${{ env.OUTPUT_DIR }}
+          overwrite: true
+
+      - name: Push Server Code
+        run: |
+          cd ${{ env.SOURCECODE_DIR }}
+          git pull
+          REMOTE_URL="https://medusa:${{ secrets.GIT_PUSH_TO_SPT }}@dev.sp-tarkov.com/${{ env.REPOSITORY_SERVER_MEDUSA }}.git"
+          git remote set-url origin "$REMOTE_URL"
+          git push
+        shell: bash
+
+  assemble-and-publish:
+    needs: [prepare, build-server-windows, build-server-linux]
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Setup Git Config
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "bot@github.com"
       - name: Push code
         run: |
           git pull
@@ -179,22 +313,34 @@ jobs:
           git push
         shell: bash
 
-      - name: Push Server Code
+      - name: Download Windows Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.build-server-windows.outputs.WIN_ARTIFACT }}
+          path: windows
+
+      - name: Download Linux Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.build-server-linux.outputs.LINUX_ARTIFACT }}
+          path: linux
+
+      - name: List Release Contents
         run: |
-          cd ${{ env.SOURCECODE_DIR }}
-          git pull
-          REMOTE_URL="https://medusa:${{ secrets.GIT_PUSH_TO_SPT }}@dev.sp-tarkov.com/${{ env.REPOSITORY_SERVER_MEDUSA }}.git"
-          git remote set-url origin "$REMOTE_URL"
-          git push
+          ls -R windows
+          echo "========================="
+          ls -R linux
         shell: bash
 
-      - name: Compress Archive
-        id: compress-archive
+      - name: Compress Releases
+        id: compress-release
         run: |
-          Compress-Archive ${{ env.SOURCECODE_DIR }}/project/${{ env.OUTPUT_DIR }} ${{ steps.filename.outputs.RELEASE }}
-          echo "archive: ${{ steps.filename.outputs.RELEASE }}"
-          dir
-        shell: pwsh
+          cd windows
+          zip -r ../${{ needs.build-server-windows.outputs.WIN_RELEASE_FILE }} *
+          cd ../linux
+          zip -r ../${{ needs.build-server-linux.outputs.LINUX_RELEASE_FILE }} *
+          ls -R ..
+        shell: bash
 
       - name: Create Pre-release
         uses: softprops/action-gh-release@v2
@@ -204,15 +350,20 @@ jobs:
           prerelease: true
           body: |
             SPT: ***${{ needs.prepare.outputs.SPT_VERSION }}***
-            Server commit: [${{ steps.debug-info.outputs.COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SERVER_MEDUSA }}/src/commit/${{ steps.debug-info.outputs.COMMIT_ID }})
+            Server commit:
+              - windows: [${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SERVER_MEDUSA }}/src/commit/${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }})
+              - linux: [${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SERVER_MEDUSA }}/src/commit/${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID }})
             Tarkov: ***${{ needs.prepare.outputs.EFT_VERSION }}***
-            Build time: ***${{ steps.filename.outputs.DATE_TIME }}***
+            Build time: ***${{ needs.prepare.outputs.BUILD_DATE_TIME }}***
 
             > [!WARNING]
             > After downloading, please use extraction software like WinRAR or [7-Zip](https://www.7-zip.org/) to unzip the files, then copy them to the Tarkov root directory. Do not use Windows File Explorer to directly open and copy the files.
 
-            Full Changelog: [${{ needs.prepare.outputs.BUILT_HASH }}....${{ steps.debug-info.outputs.COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SERVER_MEDUSA }}/compare/${{ needs.prepare.outputs.BUILT_HASH }}...${{ steps.debug-info.outputs.COMMIT_ID }})
+            Full Changelog:
+              - windows: [${{ needs.prepare.outputs.BUILT_HASH }}....${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SERVER_MEDUSA }}/compare/${{ needs.prepare.outputs.BUILT_HASH }}...${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }})
+              - linux: [${{ needs.prepare.outputs.BUILT_HASH }}....${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SERVER_MEDUSA }}/compare/${{ needs.prepare.outputs.BUILT_HASH }}...${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID }})
 
           files: |
-            ${{ steps.filename.outputs.RELEASE }}
+            ${{ needs.build-server-windows.outputs.WIN_RELEASE_FILE }}
+            ${{ needs.build-server-linux.outputs.LINUX_RELEASE_FILE }}
 
