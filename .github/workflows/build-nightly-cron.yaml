@@ -186,7 +186,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       OUTPUT_DIR: spt-server
-      SOURCECODE_DIR: /code
+      SOURCECODE_DIR: ${{ github.workspace }}/code
     outputs:
       LINUX_COMMIT_ID: ${{ steps.debug-info.outputs.COMMIT_ID }}
       LINUX_ARTIFACT: ${{ steps.filename.outputs.LINUX_ARTIFACT }}
