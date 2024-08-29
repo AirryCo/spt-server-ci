@@ -345,8 +345,8 @@ jobs:
       - name: Create Pre-release
         uses: softprops/action-gh-release@v2
         with:
-          name: ${{ steps.filename.outputs.DATE_TIME }}
-          tag_name: ${{ steps.filename.outputs.DATE_TIME }}
+          name: ${{ needs.prepare.outputs.BUILD_DATE_TIME }}
+          tag_name: ${{ needs.prepare.outputs.BUILD_DATE_TIME }}
           prerelease: true
           body: |
             SPT: ***${{ needs.prepare.outputs.SPT_VERSION }}***
