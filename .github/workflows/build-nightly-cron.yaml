@@ -350,10 +350,14 @@ jobs:
           prerelease: true
           body: |
             SPT: ***${{ needs.prepare.outputs.SPT_VERSION }}***
+
             Server commit:
+
               - windows: [${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SERVER_MEDUSA }}/src/commit/${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }})
               - linux: [${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SERVER_MEDUSA }}/src/commit/${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID }})
+
             Tarkov: ***${{ needs.prepare.outputs.EFT_VERSION }}***
+
             Build time: ***${{ needs.prepare.outputs.BUILD_DATE_TIME }}***
 
             > [!WARNING]
