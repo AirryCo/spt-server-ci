@@ -2,7 +2,7 @@
 
 This repository is for compiling the SPT server, not for source code. It automatically compiles the SPT code daily at midnight and pushes the compiled version to the releases. The compiled `.zip` file is intended for use with Windows. If you need the Linux version, please refer to the tutorial below.
 
-You also can find lanucher and modules from [here](https://dev.sp-tarkov.com/medusa/spt-build-ci/releases)
+You can find the lanucher from [SP-Tarkov](https://dev.sp-tarkov.com/medusa/spt-build-ci/releases) or [here](https://github.com/AirryCo/spt-launcher-ci/releases)
 
 [![SPT-Server Build Nightly On Schedule](https://github.com/AirryCo/spt-server-ci/actions/workflows/build-nightly-cron.yaml/badge.svg)](https://github.com/AirryCo/spt-server-ci/actions/workflows/build-nightly-cron.yaml)
 
@@ -24,11 +24,13 @@ You also can find lanucher and modules from [here](https://dev.sp-tarkov.com/med
 
 ### For linux
 
-repository(community): https://dev.sp-tarkov.com/medusa/spt-server
+repository: https://dev.sp-tarkov.com/medusa/spt-server
 
-registry: https://dev.sp-tarkov.com/medusa/-/packages/container/spt-server/nightly
+SPT Registry: https://dev.sp-tarkov.com/medusa/-/packages/container/spt-server/nightly
 
 Docker Hub: https://hub.docker.com/r/stblog/spt-server
+
+Github Container Registry: https://github.com/AirryCo/spt-server-ci/pkgs/container/spt-server
 
 1. use docker shell
 
@@ -54,3 +56,6 @@ services:
       - backendPort=6969
 ```
 
+`backendIp`(optional): Your server IP, default is your container IP like `172.17.0.2`. If `network_mode` is set to `host`, it will be your server IP by default
+
+`backendPort`(optional): Your server port, default is `6969`
