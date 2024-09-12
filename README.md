@@ -2,7 +2,7 @@
 
 This repository is for compiling the SPT server, not for source code. It automatically compiles the SPT code daily at midnight and pushes the compiled version to the releases. The compiled `.zip` file is intended for use with Windows. If you need the Linux version, please refer to the tutorial below.
 
-You can find the lanucher from [SP-Tarkov](https://dev.sp-tarkov.com/medusa/spt-build-ci/releases) or [here](https://github.com/AirryCo/spt-launcher-ci/releases)
+You can find the lanucher from [SP-Tarkov](https://dev.sp-tarkov.com/medusa/spt-launcher-ci/releases) or [here](https://github.com/AirryCo/spt-launcher-ci/releases)
 
 [![SPT-Server Build Nightly On Schedule](https://github.com/AirryCo/spt-server-ci/actions/workflows/build-nightly-cron.yaml/badge.svg)](https://github.com/AirryCo/spt-server-ci/actions/workflows/build-nightly-cron.yaml)
 
