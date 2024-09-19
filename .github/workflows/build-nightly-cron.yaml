@@ -1,4 +1,4 @@
-name: SPT-Server Build Nightly On Schedule
+name: SPT-Server Build Nightly
 
 on:
   schedule:
@@ -44,7 +44,7 @@ jobs:
           server_latest_commit_hash=${{ steps.get-latest-commit.outputs.SERVER_LATEST_COMMIT_HASH }}
           if [ "$server_last_build_hash" != "$server_latest_commit_hash" ]; then
             echo "✅ There is different between last-built-hash and lastest-commit-hash, continue to build."
-            echo "BUILT_HASH=$server_last_build_hash" >> $GITHUB_OUTPUT
+            echo "BUILT_HASH=${server_last_build_hash:0:8}" >> $GITHUB_OUTPUT
             echo "PROCEED=true" >> $GITHUB_OUTPUT
           else
             echo "✋ last-built-hash and latest-commit-hash are the same, stop building."
@@ -342,7 +342,7 @@ jobs:
           ls -R ..
         shell: bash
 
-      - name: Create Pre-release
+      - name: Create Github Pre-release
         uses: softprops/action-gh-release@v2
         with:
           name: ${{ needs.prepare.outputs.BUILD_DATE_TIME }}
@@ -363,6 +363,13 @@ jobs:
             > [!WARNING]
             > After downloading, please use extraction software like WinRAR or [7-Zip](https://www.7-zip.org/) to unzip the files, then copy them to the Tarkov root directory. Do not use Windows File Explorer to directly open and copy the files.
 
+            Docker Supported:
+
+            ```bash
+            docker pull stblog/spt-server:nightly
+            docker pull airryco/spt-server:nightly
+            ```
+
             Full Changelog:
               - windows: [${{ needs.prepare.outputs.BUILT_HASH }}....${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SERVER_MEDUSA }}/compare/${{ needs.prepare.outputs.BUILT_HASH }}...${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }})
               - linux: [${{ needs.prepare.outputs.BUILT_HASH }}....${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SERVER_MEDUSA }}/compare/${{ needs.prepare.outputs.BUILT_HASH }}...${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID }})
@@ -370,4 +377,42 @@ jobs:
           files: |
             ${{ needs.build-server-windows.outputs.WIN_RELEASE_FILE }}
             ${{ needs.build-server-linux.outputs.LINUX_RELEASE_FILE }}
+
+      #- name: Create Gitea Pre-release
+      #  id: create_gitea_pre_release
+      #  uses: akkuman/gitea-release-action@v1
+      #  with:
+      #    server_url: ${{ env.SERVER_URL }}
+      #    repository: ${{ env.REPOSITORY_SERVER_MEDUSA }}
+      #    token: ${{ secrets.GIT_PUSH_TO_SPT }}
+      #    name: ${{ needs.prepare.outputs.BUILD_DATE_TIME }}
+      #    tag_name: ${{ needs.prepare.outputs.BUILD_DATE_TIME }}
+      #    prerelease: true
+      #    body: |
+      #      SPT: ***${{ needs.prepare.outputs.SPT_VERSION }}***
+
+      #     Server commit:
+
+      #        - windows: [${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SERVER_MEDUSA }}/src/commit/${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }})
+      #        - linux: [${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SERVER_MEDUSA }}/src/commit/${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID }})
+
+      #     Tarkov: ***${{ needs.prepare.outputs.EFT_VERSION }}***
+
+      #      Build time: ***${{ needs.prepare.outputs.BUILD_DATE_TIME }}***
+
+      #      > [!WARNING]
+      #      > After downloading, please use extraction software like WinRAR or [7-Zip](https://www.7-zip.org/) to unzip the files, then copy them to the Tarkov root directory. Do not use Windows File Explorer to directly open and copy the files.
+
+      #     Docker Supported:
+
+      #      ```bash
+      #      docker pull stblog/spt-server:nightly
+      #      docker pull airryco/spt-server:nightly
+      #      ```
+
+      #     Download Page: ${{ github.server_url }}/${{ github.repository }}/releases/tag/${{ needs.prepare.outputs.BUILD_DATE_TIME }}
+
+      #      Full Changelog:
+      #        - windows: [${{ needs.prepare.outputs.BUILT_HASH }}....${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SERVER_MEDUSA }}/compare/${{ needs.prepare.outputs.BUILT_HASH }}...${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }})
+      #        - linux: [${{ needs.prepare.outputs.BUILT_HASH }}....${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SERVER_MEDUSA }}/compare/${{ needs.prepare.outputs.BUILT_HASH }}...${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID }})
 
