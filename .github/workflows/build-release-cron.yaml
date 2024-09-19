@@ -57,7 +57,7 @@ jobs:
         shell: bash
       - name: Extract versions
         id: versions
-        if: steps.compare-hash.outputs.PROCEED == 'true'
+        if: steps.compare-tags.outputs.PROCEED == 'true'
         run: |
           cd Server
           SERVER_TAG=${{ steps.get-latest-tag.outputs.SERVER_LATEST_TAG }}
