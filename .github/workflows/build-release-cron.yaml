@@ -294,7 +294,7 @@ jobs:
           git push
           git tag -d ${{ needs.prepare.outputs.TARGET_TAG }}
           git tag ${{ needs.prepare.outputs.TARGET_TAG }}
-          git push -u oirgin ${{ needs.prepare.outputs.TARGET_TAG }}
+          git push -u origin ${{ needs.prepare.outputs.TARGET_TAG }}
         shell: bash
 
   assemble-and-publish:
