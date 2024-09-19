@@ -379,7 +379,7 @@ jobs:
             ```
 
             Full Changelog:
-              - windows: [${{ needs.prepare.outputs.BUILT_TAG }}....${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SERVER_MEDUSA }}/compare/${{ needs.prepare.outputs.BUILT_HASH }}...${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }})
+              - windows: [${{ needs.prepare.outputs.BUILT_TAG }}....${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SERVER_MEDUSA }}/compare/${{ needs.prepare.outputs.BUILT_TAG }}...${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }})
               - linux: [${{ needs.prepare.outputs.BUILT_TAG }}....${{ needs.prepare.outputs.TARGET_TAG }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SERVER_MEDUSA }}/compare/${{ needs.prepare.outputs.BUILT_TAG }}...${{ needs.prepare.outputs.TARGET_TAG }})
 
           files: |
@@ -461,8 +461,8 @@ jobs:
             Download Page: ${{ github.server_url }}/${{ github.repository }}/releases/tag/${{ needs.prepare.outputs.TARGET_TAG }}
 
             Full Changelog:
-              - windows: [${{ needs.prepare.outputs.BUILT_HASH }}....${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SERVER_MEDUSA }}/compare/${{ needs.prepare.outputs.BUILT_HASH }}...${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }})
-              - linux: [${{ needs.prepare.outputs.BUILT_HASH }}....${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SERVER_MEDUSA }}/compare/${{ needs.prepare.outputs.BUILT_HASH }}...${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID }})
+              - windows: [${{ needs.prepare.outputs.BUILT_TAG }}....${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SERVER_MEDUSA }}/compare/${{ needs.prepare.outputs.BUILT_TAG }}...${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }})
+              - linux: [${{ needs.prepare.outputs.BUILT_TAG }}....${{ needs.prepare.outputs.TARGET_TAG }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SERVER_MEDUSA }}/compare/${{ needs.prepare.outputs.BUILT_TAG }}...${{ needs.prepare.outputs.TARGET_TAG }})
 
 
       - name: Create Gitea Release
