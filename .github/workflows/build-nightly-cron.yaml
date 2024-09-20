@@ -370,6 +370,7 @@ jobs:
           rm trigger.nightly
           server=${{ needs.prepare.outputs.SERVER_COMMIT }}
           echo "server=$server" > trigger.nightly
+          git add trigger.nightly
           git commit -m "🤖 up to \`$server\`."
           REMOTE_URL="https://medusa:${{ secrets.GIT_PUSH_TO_SPT }}@${{ env.SERVER_DOMAIN }}/${{ env.REPOSITORY_SERVER_CI }}.git"
           git remote set-url origin "$REMOTE_URL"
