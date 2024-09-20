@@ -460,7 +460,6 @@ jobs:
           token: ${{ secrets.GIT_PUSH_TO_SPT }}
           name: ${{ needs.prepare.outputs.BUILD_DATE_TIME }}
           tag_name: ${{ needs.prepare.outputs.BUILD_DATE_TIME }}
-          target_commitish: ${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID }}
           prerelease: true
           body: |
             SPT: ***${{ needs.prepare.outputs.SPT_VERSION }}***
