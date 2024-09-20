@@ -375,7 +375,7 @@ jobs:
 
             ```bash
             docker pull stblog/spt-server:${{ needs.prepare.outputs.TARGET_TAG }}
-            docker pull airryco/spt-server:${{ needs.prepare.outputs.TARGET_TAG }}
+            docker pull ghcr.io/airryco/spt-server:${{ needs.prepare.outputs.TARGET_TAG }}
             ```
 
             Full Changelog:
@@ -413,7 +413,7 @@ jobs:
 
             ```bash
             docker pull stblog/spt-server:${{ needs.prepare.outputs.TARGET_TAG }}
-            docker pull airryco/spt-server:${{ needs.prepare.outputs.TARGET_TAG }}
+            docker pull ghcr.io/airryco/spt-server:${{ needs.prepare.outputs.TARGET_TAG }}
             ```
 
             Full Changelog:
@@ -455,7 +455,7 @@ jobs:
 
             ```bash
             docker pull stblog/spt-server:${{ needs.prepare.outputs.TARGET_TAG }}
-            docker pull airryco/spt-server:${{ needs.prepare.outputs.TARGET_TAG }}
+            docker pull ghcr.io/airryco/spt-server:${{ needs.prepare.outputs.TARGET_TAG }}
             ```
 
             Download Page: ${{ github.server_url }}/${{ github.repository }}/releases/tag/${{ needs.prepare.outputs.TARGET_TAG }}
@@ -495,7 +495,7 @@ jobs:
 
             ```bash
             docker pull stblog/spt-server:${{ needs.prepare.outputs.TARGET_TAG }}
-            docker pull airryco/spt-server:${{ needs.prepare.outputs.TARGET_TAG }}
+            docker pull ghcr.io/airryco/spt-server:${{ needs.prepare.outputs.TARGET_TAG }}
             ```
 
             Download Page: ${{ github.server_url }}/${{ github.repository }}/releases/tag/${{ needs.prepare.outputs.TARGET_TAG }}
