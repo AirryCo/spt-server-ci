@@ -433,7 +433,7 @@ jobs:
 
             Build time: ***${{ needs.prepare.outputs.BUILD_DATE_TIME }}***
 
-            Docker Supported:
+            ***Docker Supported***:
 
             ```bash
             docker pull stblog/spt-server:nightly
@@ -473,7 +473,7 @@ jobs:
 
             Build time: ***${{ needs.prepare.outputs.BUILD_DATE_TIME }}***
 
-            Docker Supported:
+            ***Docker Supported***:
 
             ```bash
             docker pull stblog/spt-server:nightly
