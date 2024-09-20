@@ -193,6 +193,13 @@ jobs:
     env:
       OUTPUT_DIR: spt-server
       SOURCECODE_DIR: ${{ github.workspace }}/code
+
+      SPT_USER: medusa
+      SPT_REGISTRY: dev.sp-tarkov.com
+      DOCKERHUB_USER: stblog
+      DOCKERHUB_REPOSITORY: spt-server
+      GHCR_USER: airryco
+      GHCR_REPOSITORY: spt-server
     outputs:
       LINUX_COMMIT_ID: ${{ steps.debug-info.outputs.COMMIT_ID }}
       LINUX_ARTIFACT: ${{ steps.filename.outputs.LINUX_ARTIFACT }}
@@ -223,7 +230,6 @@ jobs:
       - name: Merge Server Code From SPT
         run: |
           cd ${{ env.SOURCECODE_DIR }}
-          git checkout ${{ env.RELEASE_BRANCH }}
           git pull
           git fetch -u ${{ env.SERVER_URL }}/${{ env.REPOSITORY_SERVER }}.git ${{ needs.prepare.outputs.TARGET_TAG }}:SPT-${{ needs.prepare.outputs.TARGET_TAG }}
           git merge -m "🤖 Merge tag \`${{ needs.prepare.outputs.TARGET_TAG }}\` from SPT" --no-ff SPT-${{ needs.prepare.outputs.TARGET_TAG }}
@@ -241,6 +247,7 @@ jobs:
           echo "latest commit hash: $(git rev-parse HEAD)"
           echo "last commit message:" && git log -1 --pretty=%B
           echo "COMMIT_ID=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+          echo "COMMIT_ID_WHOLE=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
         shell: bash
 
       - name: Cache NPM Dependencies
@@ -267,6 +274,7 @@ jobs:
           npm run build:release
           ls -l build
           mv build ${{ env.OUTPUT_DIR }}
+          tar -czf spt-server.tgz ${{ env.OUTPUT_DIR }}
         shell: bash
 
       - name: Generate Linux File Name
@@ -284,6 +292,82 @@ jobs:
           name: ${{ steps.filename.outputs.LINUX_ARTIFACT }}
           path: ${{ env.SOURCECODE_DIR }}/project/${{ env.OUTPUT_DIR }}
           overwrite: true
+
+      # docker
+      - name: Move .tgz to docker dir
+        run: |
+          mv project/spt-server.tgz docker/spt-server.tgz
+
+      - name: Extract metadata for Docker with bem version
+        if: ${{ contains(needs.prepare.outputs.TARGET_TAG, 'BEM') }}
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: |
+            ${{ env.DOCKERHUB_USER }}/${{ env.DOCKERHUB_REPOSITORY }}
+            ghcr.io/${{ env.GHCR_USER }}/${{ env.GHCR_REPOSITORY }}
+          tags: |
+            type=semver,pattern={{version}},value=${{ needs.prepare.outputs.TARGET_TAG }}
+            type=semver,pattern={{major}}.{{minor}},value=${{ needs.prepare.outputs.TARGET_TAG }}
+      - name: Extract metadata for Docker with latest version
+        if: ${{ !contains(needs.prepare.outputs.TARGET_TAG, 'BEM') }}
+        id: meta-latest
+        uses: docker/metadata-action@v5
+        with:
+          images: |
+            ${{ env.DOCKERHUB_USER }}/${{ env.DOCKERHUB_REPOSITORY }}
+            ghcr.io/${{ env.GHCR_USER }}/${{ env.GHCR_REPOSITORY }}
+          tags: |
+            type=semver,pattern={{version}},value=${{ needs.prepare.outputs.TARGET_TAG }}
+            type=semver,pattern={{major}}.{{minor}},value=${{ needs.prepare.outputs.TARGET_TAG }}
+            type=raw,value=latest
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # DockerHub
+      - name: Login to Dockerhub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ env.DOCKERHUB_USER }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      # GitHub Container Registry
+      - name: Login to Github Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ env.GHCR_USER }}
+          password: ${{ secrets.GHCR_TOKEN }}
+
+      - name: Build and Push For BEM
+        if: ${{ contains(needs.prepare.outputs.TARGET_TAG, 'BEM') }}
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ gitea.workspace }}/docker
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: |
+            ${{ steps.meta.outputs.labels }}
+            org.opencontainers.image.source=https://dev.sp-tarkov.com/medusa/spt-server
+            org.opencontainers.image.url=https://dev.sp-tarkov.com/medusa/spt-server
+            org.opencontainers.image.revision=${{ steps.debug-info.outputs.COMMIT_ID_WHOLE }}
+          platforms: linux/amd64
+
+      - name: Build and Push For Latest
+        if: ${{ !contains(needs.prepare.outputs.TARGET_TAG, 'BEM') }}
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ gitea.workspace }}/docker
+          push: true
+          tags: ${{ steps.meta-latest.outputs.tags }}
+          labels: |
+            ${{ steps.meta-latest.outputs.labels }}
+            org.opencontainers.image.source=https://dev.sp-tarkov.com/medusa/spt-server
+            org.opencontainers.image.url=https://dev.sp-tarkov.com/medusa/spt-server
+            org.opencontainers.image.revision=${{ steps.debug-info.outputs.COMMIT_ID_WHOLE }}
+          platforms: linux/amd64
 
       - name: Push Linux Server Code And Tag
         run: |
@@ -310,7 +394,7 @@ jobs:
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "bot@github.com"
-      - name: Push code
+      - name: Push Code To GitHub
         run: |
           git pull
           rm trigger.release
@@ -435,6 +519,7 @@ jobs:
           token: ${{ secrets.GIT_PUSH_TO_SPT }}
           name: ${{ needs.prepare.outputs.TARGET_TAG }}
           tag_name: ${{ needs.prepare.outputs.TARGET_TAG }}
+          target_commitish: ${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID }}
           prerelease: true
           body: |
             SPT: ***${{ needs.prepare.outputs.SPT_VERSION }}***
@@ -448,9 +533,6 @@ jobs:
 
             Build time: ***${{ needs.prepare.outputs.BUILD_DATE_TIME }}***
 
-            > [!WARNING]
-            > After downloading, please use extraction software like WinRAR or [7-Zip](https://www.7-zip.org/) to unzip the files, then copy them to the Tarkov root directory. Do not use Windows File Explorer to directly open and copy the files.
-
             Docker Supported:
 
             ```bash
@@ -459,6 +541,9 @@ jobs:
             ```
 
             Download Page: ${{ github.server_url }}/${{ github.repository }}/releases/tag/${{ needs.prepare.outputs.TARGET_TAG }}
+
+            > [!WARNING]
+            > After downloading, please use extraction software like WinRAR or [7-Zip](https://www.7-zip.org/) to unzip the files, then copy them to the Tarkov root directory. Do not use Windows File Explorer to directly open and copy the files.
 
             Full Changelog:
               - windows: [${{ needs.prepare.outputs.BUILT_TAG }}....${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SERVER_MEDUSA }}/compare/${{ needs.prepare.outputs.BUILT_TAG }}...${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }})
@@ -475,6 +560,7 @@ jobs:
           token: ${{ secrets.GIT_PUSH_TO_SPT }}
           name: ${{ needs.prepare.outputs.TARGET_TAG }}
           tag_name: ${{ needs.prepare.outputs.TARGET_TAG }}
+          target_commitish: ${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID }}
           prerelease: false
           body: |
             SPT: ***${{ needs.prepare.outputs.SPT_VERSION }}***
@@ -488,9 +574,6 @@ jobs:
 
             Build time: ***${{ needs.prepare.outputs.BUILD_DATE_TIME }}***
 
-            > [!WARNING]
-            > After downloading, please use extraction software like WinRAR or [7-Zip](https://www.7-zip.org/) to unzip the files, then copy them to the Tarkov root directory. Do not use Windows File Explorer to directly open and copy the files.
-
             docker supported:
 
             ```bash
@@ -499,6 +582,9 @@ jobs:
             ```
 
             Download Page: ${{ github.server_url }}/${{ github.repository }}/releases/tag/${{ needs.prepare.outputs.TARGET_TAG }}
+
+            > [!WARNING]
+            > After downloading, please use extraction software like WinRAR or [7-Zip](https://www.7-zip.org/) to unzip the files, then copy them to the Tarkov root directory. Do not use Windows File Explorer to directly open and copy the files.
 
             Full Changelog:
               - windows: [${{ needs.prepare.outputs.BUILT_TAG }}....${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SERVER_MEDUSA }}/compare/${{ needs.prepare.outputs.BUILT_TAG }}...${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }})

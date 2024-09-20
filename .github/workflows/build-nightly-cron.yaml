@@ -11,6 +11,7 @@ env:
   SERVER_URL: https://dev.sp-tarkov.com
   REPOSITORY_SERVER: SPT/Server
   REPOSITORY_SERVER_MEDUSA: medusa/spt-server
+  REPOSITORY_SERVER_CI: medusa/spt-server-ci
   NIGHTLY_BRANCH: 3.10.0-DEV
 
 jobs:
@@ -77,7 +78,7 @@ jobs:
     runs-on: windows-latest
     env:
       OUTPUT_DIR: spt-server
-      SOURCECODE_DIR: c:/code
+      SOURCECODE_DIR: c:/snapshot
     outputs:
       WIN_COMMIT_ID: ${{ steps.debug-info.outputs.COMMIT_ID }}
       WIN_ARTIFACT: ${{ steps.filename.outputs.WIN_ARTIFACT }}
@@ -93,11 +94,10 @@ jobs:
           git config --global user.name "github-actions[bot]"
           git config --global user.email "bot@github.com"
 
-      - name: Clone Medusa's Server Code
+      - name: Clone Medusa's Windows Server Code
         run: |
-          git clone ${{ env.SERVER_URL }}/${{ env.REPOSITORY_SERVER_MEDUSA }} ${{ env.SOURCECODE_DIR }}
+          git clone -b ${{ env.NIGHTLY_BRANCH }}_windows ${{ env.SERVER_URL }}/${{ env.REPOSITORY_SERVER_MEDUSA }} ${{ env.SOURCECODE_DIR }}
           cd ${{ env.SOURCECODE_DIR }}
-          git checkout ${{ env.NIGHTLY_BRANCH }}_windows
           git lfs pull
         shell: bash
 
@@ -109,7 +109,6 @@ jobs:
       - name: Merge Server Code From SPT
         run: |
           cd ${{ env.SOURCECODE_DIR }}
-          git checkout ${{ env.NIGHTLY_BRANCH }}_windows
           git pull
           git fetch -u ${{ env.SERVER_URL }}/${{ env.REPOSITORY_SERVER }}.git ${{ env.NIGHTLY_BRANCH }}:SPT-${{ env.NIGHTLY_BRANCH }}
           git merge -m "🤖 Merge branch '${{ env.NIGHTLY_BRANCH }}' from SPT" --no-ff SPT-${{ env.NIGHTLY_BRANCH }}
@@ -146,7 +145,7 @@ jobs:
           npm install
         shell: pwsh
 
-      - name: Build Server
+      - name: Build Windows Server
         id: build-server
         run: |
           cd ${{ env.SOURCECODE_DIR }}/project
@@ -155,7 +154,7 @@ jobs:
           mv build ${{ env.OUTPUT_DIR }}
         shell: bash
 
-      - name: Generate File Name
+      - name: Generate Windows File Name
         id: filename
         run: |
           artifact_name=${{ env.OUTPUT_DIR }}-${{ needs.prepare.outputs.SPT_VERSION }}-win-nightly-${{ steps.debug-info.outputs.COMMIT_ID }}-EFT${{ needs.prepare.outputs.EFT_VERSION }}-${{ needs.prepare.outputs.BUILD_DATE_TIME }}-artifact
@@ -164,14 +163,14 @@ jobs:
           echo "WIN_RELEASE=$release_name" >> $GITHUB_OUTPUT
         shell: bash
 
-      - name: Artifact Server
+      - name: Artifact Winodws Server
         uses: actions/upload-artifact@v4
         with:
           name: ${{ steps.filename.outputs.WIN_ARTIFACT }}
           path: ${{ env.SOURCECODE_DIR }}/project/${{ env.OUTPUT_DIR }}
           overwrite: true
 
-      - name: Push Server Code
+      - name: Push Windows Server Code
         run: |
           cd ${{ env.SOURCECODE_DIR }}
           git pull
@@ -187,6 +186,14 @@ jobs:
     env:
       OUTPUT_DIR: spt-server
       SOURCECODE_DIR: ${{ github.workspace }}/code
+
+      SPT_USER: medusa
+      SPT_REGISTRY: dev.sp-tarkov.com
+      DOCKERHUB_USER: stblog
+      DOCKERHUB_REPOSITORY: spt-server
+      GHCR_USER: airryco
+      GHCR_REPOSITORY: spt-server
+
     outputs:
       LINUX_COMMIT_ID: ${{ steps.debug-info.outputs.COMMIT_ID }}
       LINUX_ARTIFACT: ${{ steps.filename.outputs.LINUX_ARTIFACT }}
@@ -204,9 +211,8 @@ jobs:
 
       - name: Clone Medusa's Server Code
         run: |
-          git clone ${{ env.SERVER_URL }}/${{ env.REPOSITORY_SERVER_MEDUSA }} ${{ env.SOURCECODE_DIR }}
+          git -b ${{ env.NIGHTLY_BRANCH }} clone ${{ env.SERVER_URL }}/${{ env.REPOSITORY_SERVER_MEDUSA }} ${{ env.SOURCECODE_DIR }}
           cd ${{ env.SOURCECODE_DIR }}
-          git checkout ${{ env.NIGHTLY_BRANCH }}
           git lfs pull
         shell: bash
 
@@ -218,7 +224,6 @@ jobs:
       - name: Merge Server Code From SPT
         run: |
           cd ${{ env.SOURCECODE_DIR }}
-          git checkout ${{ env.NIGHTLY_BRANCH }}
           git pull
           git fetch -u ${{ env.SERVER_URL }}/${{ env.REPOSITORY_SERVER }}.git ${{ env.NIGHTLY_BRANCH }}:SPT-${{ env.NIGHTLY_BRANCH }}
           git merge -m "🤖 Merge branch '${{ env.NIGHTLY_BRANCH }}' from SPT" --no-ff SPT-${{ env.NIGHTLY_BRANCH }}
@@ -236,6 +241,7 @@ jobs:
           echo "latest commit hash: $(git rev-parse HEAD)"
           echo "last commit message:" && git log -1 --pretty=%B
           echo "COMMIT_ID=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+          echo "COMMIT_ID_WHOLE=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
         shell: bash
 
       - name: Cache NPM Dependencies
@@ -255,16 +261,17 @@ jobs:
           npm install
         shell: bash
 
-      - name: Build Server
+      - name: Build Linux Server
         id: build-server
         run: |
           cd ${{ env.SOURCECODE_DIR }}/project
           npm run build:release
           ls -l build
           mv build ${{ env.OUTPUT_DIR }}
+          tar -czf spt-server.tgz ${{ env.OUTPUT_DIR }}
         shell: bash
 
-      - name: Generate File Name
+      - name: Generate Linux File Name
         id: filename
         run: |
           artifact_name=${{ env.OUTPUT_DIR }}-${{ needs.prepare.outputs.SPT_VERSION }}-linux-nightly-${{ steps.debug-info.outputs.COMMIT_ID }}-EFT${{ needs.prepare.outputs.EFT_VERSION }}-${{ needs.prepare.outputs.BUILD_DATE_TIME }}-artifact
@@ -273,14 +280,59 @@ jobs:
           echo "LINUX_RELEASE=$release_name" >> $GITHUB_OUTPUT
         shell: bash
 
-      - name: Artifact Server
+      - name: Artifact Linux Server
         uses: actions/upload-artifact@v4
         with:
           name: ${{ steps.filename.outputs.LINUX_ARTIFACT }}
           path: ${{ env.SOURCECODE_DIR }}/project/${{ env.OUTPUT_DIR }}
           overwrite: true
 
-      - name: Push Server Code
+      # docker
+      - name: Move .tgz to docker dir
+        run: |
+          mv project/spt-server.tgz docker/spt-server.tgz
+      - name: Extract metadata for Docker
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: |
+            ${{ env.DOCKERHUB_USER }}/${{ env.DOCKERHUB_REPOSITORY }}
+            ghcr.io/${{ env.GHCR_USER }}/${{ env.GHCR_REPOSITORY }}
+          tags: |
+            type=raw,value=nightly
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # DockerHub
+      - name: Login to Dockerhub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ env.DOCKERHUB_USER }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      # GitHub Container Registry
+      - name: Login to Github Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ env.GHCR_USER }}
+          password: ${{ secrets.GHCR_TOKEN }}
+
+      - name: Build and Push
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ gitea.workspace }}/docker
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: |
+            ${{ steps.meta.outputs.labels }}
+            org.opencontainers.image.source=https://dev.sp-tarkov.com/medusa/spt-server
+            org.opencontainers.image.url=https://dev.sp-tarkov.com/medusa/spt-server
+            org.opencontainers.image.revision=${{ steps.debug-info.outputs.COMMIT_ID_WHOLE }}
+          platforms: linux/amd64
+
+      - name: Push Linux Server Code
         run: |
           cd ${{ env.SOURCECODE_DIR }}
           git pull
@@ -289,21 +341,18 @@ jobs:
           git push
         shell: bash
 
-  assemble-and-publish:
+  update-trigger-and-push:
     needs: [prepare, build-server-windows, build-server-linux]
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Setup Git Config
+      - name: Update trigger and Push to GitHub
         run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "bot@github.com"
-      - name: Push code
-        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "bot@stblog.com.cn"
           git pull
           rm trigger.nightly
           server=${{ needs.prepare.outputs.SERVER_COMMIT }}
@@ -312,6 +361,30 @@ jobs:
           git commit -m "🤖 up to \`$server\`."
           git push
         shell: bash
+      - name: Update trigger and Push to SP-Tarkov
+        run: |
+          git clone --depth=1 ${{ env.SERVER_URL }}/${{ env.REPOSITORY_SERVER_CI }}.git SP-Tarkov
+          cd SP-Tarkov
+          git config user.name "github-actions[bot]"
+          git config user.email "bot@stblog.com.cn"
+          rm trigger.nightly
+          server=${{ needs.prepare.outputs.SERVER_COMMIT }}
+          echo "server=$server" > trigger.nightly
+          git commit -m "🤖 up to \`$server\`."
+          REMOTE_URL="https://medusa:${{ secrets.GIT_PUSH_TO_SPT }}@${{ env.SERVER_DOMAIN }}/${{ env.REPOSITORY_SERVER_CI }}.git"
+          git remote set-url origin "$REMOTE_URL"
+          git push
+        shell: bash
+
+  assemble-and-publish:
+    needs: [prepare, build-server-windows, build-server-linux, update-trigger-and-push]
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Download Windows Artifact
         uses: actions/download-artifact@v4
@@ -360,15 +433,15 @@ jobs:
 
             Build time: ***${{ needs.prepare.outputs.BUILD_DATE_TIME }}***
 
-            > [!WARNING]
-            > After downloading, please use extraction software like WinRAR or [7-Zip](https://www.7-zip.org/) to unzip the files, then copy them to the Tarkov root directory. Do not use Windows File Explorer to directly open and copy the files.
-
             Docker Supported:
 
             ```bash
             docker pull stblog/spt-server:nightly
-            docker pull airryco/spt-server:nightly
+            docker pull ghcr.io/airryco/spt-server:nightly
             ```
+
+            > [!WARNING]
+            > After downloading, please use extraction software like WinRAR or [7-Zip](https://www.7-zip.org/) to unzip the files, then copy them to the Tarkov root directory. Do not use Windows File Explorer to directly open and copy the files.
 
             Full Changelog:
               - windows: [${{ needs.prepare.outputs.BUILT_HASH }}....${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SERVER_MEDUSA }}/compare/${{ needs.prepare.outputs.BUILT_HASH }}...${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }})
@@ -378,41 +451,41 @@ jobs:
             ${{ needs.build-server-windows.outputs.WIN_RELEASE_FILE }}
             ${{ needs.build-server-linux.outputs.LINUX_RELEASE_FILE }}
 
-      #- name: Create Gitea Pre-release
-      #  id: create_gitea_pre_release
-      #  uses: akkuman/gitea-release-action@v1
-      #  with:
-      #    server_url: ${{ env.SERVER_URL }}
-      #    repository: ${{ env.REPOSITORY_SERVER_MEDUSA }}
-      #    token: ${{ secrets.GIT_PUSH_TO_SPT }}
-      #    name: ${{ needs.prepare.outputs.BUILD_DATE_TIME }}
-      #    tag_name: ${{ needs.prepare.outputs.BUILD_DATE_TIME }}
-      #    prerelease: true
-      #    body: |
-      #      SPT: ***${{ needs.prepare.outputs.SPT_VERSION }}***
+      - name: Create Gitea Pre-release
+        uses: akkuman/gitea-release-action@v1
+        with:
+          server_url: ${{ env.SERVER_URL }}
+          repository: ${{ env.REPOSITORY_SERVER_CI }}
+          token: ${{ secrets.GIT_PUSH_TO_SPT }}
+          name: ${{ needs.prepare.outputs.BUILD_DATE_TIME }}
+          tag_name: ${{ needs.prepare.outputs.BUILD_DATE_TIME }}
+          target_commitish: ${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID }}
+          prerelease: true
+          body: |
+            SPT: ***${{ needs.prepare.outputs.SPT_VERSION }}***
 
-      #     Server commit:
+            Server commit:
 
-      #        - windows: [${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SERVER_MEDUSA }}/src/commit/${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }})
-      #        - linux: [${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SERVER_MEDUSA }}/src/commit/${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID }})
+              - windows: [${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SERVER_MEDUSA }}/src/commit/${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }})
+              - linux: [${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SERVER_MEDUSA }}/src/commit/${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID }})
 
-      #     Tarkov: ***${{ needs.prepare.outputs.EFT_VERSION }}***
+            Tarkov: ***${{ needs.prepare.outputs.EFT_VERSION }}***
 
-      #      Build time: ***${{ needs.prepare.outputs.BUILD_DATE_TIME }}***
+            Build time: ***${{ needs.prepare.outputs.BUILD_DATE_TIME }}***
 
-      #      > [!WARNING]
-      #      > After downloading, please use extraction software like WinRAR or [7-Zip](https://www.7-zip.org/) to unzip the files, then copy them to the Tarkov root directory. Do not use Windows File Explorer to directly open and copy the files.
+            Docker Supported:
 
-      #     Docker Supported:
+            ```bash
+            docker pull stblog/spt-server:nightly
+            docker pull ghcr.io/airryco/spt-server:nightly
+            ```
 
-      #      ```bash
-      #      docker pull stblog/spt-server:nightly
-      #      docker pull airryco/spt-server:nightly
-      #      ```
+            Download Page: ${{ github.server_url }}/${{ github.repository }}/releases/tag/${{ needs.prepare.outputs.BUILD_DATE_TIME }}
 
-      #     Download Page: ${{ github.server_url }}/${{ github.repository }}/releases/tag/${{ needs.prepare.outputs.BUILD_DATE_TIME }}
+            > [!WARNING]
+            > After downloading, please use extraction software like WinRAR or [7-Zip](https://www.7-zip.org/) to unzip the files, then copy them to the Tarkov root directory. Do not use Windows File Explorer to directly open and copy the files.
 
-      #      Full Changelog:
-      #        - windows: [${{ needs.prepare.outputs.BUILT_HASH }}....${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SERVER_MEDUSA }}/compare/${{ needs.prepare.outputs.BUILT_HASH }}...${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }})
-      #        - linux: [${{ needs.prepare.outputs.BUILT_HASH }}....${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SERVER_MEDUSA }}/compare/${{ needs.prepare.outputs.BUILT_HASH }}...${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID }})
+            Full Changelog:
+              - windows: [${{ needs.prepare.outputs.BUILT_HASH }}....${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SERVER_MEDUSA }}/compare/${{ needs.prepare.outputs.BUILT_HASH }}...${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }})
+              - linux: [${{ needs.prepare.outputs.BUILT_HASH }}....${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SERVER_MEDUSA }}/compare/${{ needs.prepare.outputs.BUILT_HASH }}...${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID }})
 
