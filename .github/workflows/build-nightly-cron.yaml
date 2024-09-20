@@ -142,7 +142,7 @@ jobs:
         if: steps.cache-npm-dependencies.outputs.cache-hit != 'true'
         run: |
           cd ${{ env.SOURCECODE_DIR }}/project
-          npm install
+          npm install --legacy-peer-deps
         shell: pwsh
 
       - name: Build Windows Server
@@ -211,7 +211,7 @@ jobs:
 
       - name: Clone Medusa's Server Code
         run: |
-          git -b ${{ env.NIGHTLY_BRANCH }} clone ${{ env.SERVER_URL }}/${{ env.REPOSITORY_SERVER_MEDUSA }} ${{ env.SOURCECODE_DIR }}
+          git clone -b ${{ env.NIGHTLY_BRANCH }} ${{ env.SERVER_URL }}/${{ env.REPOSITORY_SERVER_MEDUSA }} ${{ env.SOURCECODE_DIR }}
           cd ${{ env.SOURCECODE_DIR }}
           git lfs pull
         shell: bash
