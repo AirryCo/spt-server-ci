@@ -322,7 +322,7 @@ jobs:
       - name: Build and Push
         uses: docker/build-push-action@v6
         with:
-          context: ${{ gitea.workspace }}/docker
+          context: ${{ env.SOURCECODE_DIR }}/docker
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: |

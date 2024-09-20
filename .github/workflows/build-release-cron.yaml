@@ -296,7 +296,7 @@ jobs:
       # docker
       - name: Move .tgz to docker dir
         run: |
-          mv project/spt-server.tgz docker/spt-server.tgz
+          mv ${{ env.SOURCECODE_DIR }}/project/spt-server.tgz docker/spt-server.tgz
 
       - name: Extract metadata for Docker with bem version
         if: ${{ contains(needs.prepare.outputs.TARGET_TAG, 'BEM') }}
@@ -345,7 +345,7 @@ jobs:
         if: ${{ contains(needs.prepare.outputs.TARGET_TAG, 'BEM') }}
         uses: docker/build-push-action@v6
         with:
-          context: ${{ gitea.workspace }}/docker
+          context: ${{ env.SOURCECODE_DIR }}/docker
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: |
@@ -359,7 +359,7 @@ jobs:
         if: ${{ !contains(needs.prepare.outputs.TARGET_TAG, 'BEM') }}
         uses: docker/build-push-action@v6
         with:
-          context: ${{ gitea.workspace }}/docker
+          context: ${{ env.SOURCECODE_DIR }}/docker
           push: true
           tags: ${{ steps.meta-latest.outputs.tags }}
           labels: |
