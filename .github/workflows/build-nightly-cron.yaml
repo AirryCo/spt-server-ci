@@ -258,7 +258,7 @@ jobs:
         if: steps.cache-npm-dependencies.outputs.cache-hit != 'true'
         run: |
           cd ${{ env.SOURCECODE_DIR }}/project
-          npm install
+          npm install --legacy-peer-deps
         shell: bash
 
       - name: Build Linux Server
@@ -290,7 +290,7 @@ jobs:
       # docker
       - name: Move .tgz to docker dir
         run: |
-          mv project/spt-server.tgz docker/spt-server.tgz
+          mv ${{ env.SOURCECODE_DIR }}/project/spt-server.tgz ${{ env.SOURCECODE_DIR }}/docker/spt-server.tgz
       - name: Extract metadata for Docker
         id: meta
         uses: docker/metadata-action@v5
