@@ -274,7 +274,6 @@ jobs:
           npm run build:release
           ls -l build
           mv build ${{ env.OUTPUT_DIR }}
-          tar -czf spt-server.tgz ${{ env.OUTPUT_DIR }}
         shell: bash
 
       - name: Generate Linux File Name
@@ -296,7 +295,10 @@ jobs:
       # docker
       - name: Move .tgz to docker dir
         run: |
-          mv ${{ env.SOURCECODE_DIR }}/project/spt-server.tgz docker/spt-server.tgz
+          cd ${{ env.SOURCECODE_DIR }}/project
+          tar -czf ../docker/spt-server.tgz ${{ env.OUTPUT_DIR }}
+          ls -l ../docker
+        shell: bash
 
       - name: Extract metadata for Docker with bem version
         if: ${{ contains(needs.prepare.outputs.TARGET_TAG, 'BEM') }}
