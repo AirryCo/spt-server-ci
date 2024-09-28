@@ -198,6 +198,8 @@ jobs:
       LINUX_COMMIT_ID: ${{ steps.debug-info.outputs.COMMIT_ID }}
       LINUX_ARTIFACT: ${{ steps.filename.outputs.LINUX_ARTIFACT }}
       LINUX_RELEASE_FILE: ${{ steps.filename.outputs.LINUX_RELEASE }}
+      DOCKER_DIGEST: ${{ steps.build-and-push.outputs.digest }}
+      DOCKER_IMAGEID: ${{ steps.build-and-push.outputs.imageid }}
 
     steps:
       - name: Checkout
@@ -323,6 +325,7 @@ jobs:
           password: ${{ secrets.GHCR_TOKEN }}
 
       - name: Build and Push
+        id: build-and-push
         uses: docker/build-push-action@v6
         with:
           context: ${{ env.SOURCECODE_DIR }}/docker
@@ -429,15 +432,18 @@ jobs:
             SPT: ***${{ needs.prepare.outputs.SPT_VERSION }}***
 
             Server commit:
-
-              - windows: [${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SERVER_MEDUSA }}/src/commit/${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }})
               - linux: [${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SERVER_MEDUSA }}/src/commit/${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID }})
+              - windows: [${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SERVER_MEDUSA }}/src/commit/${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }})
 
             Tarkov: ***${{ needs.prepare.outputs.EFT_VERSION }}***
 
             Build time: ***${{ needs.prepare.outputs.BUILD_DATE_TIME }}***
 
-            ***Docker Supported***:
+            **Docker Supported For linux/amd64**:
+
+            image id: `${{ needs.build-server-linux.outputs.DOCKER_IMAGEID }}`
+
+            digest: `${{ needs.build-server-linux.outputs.DOCKER_DIGEST }}`
 
             ```bash
             docker pull stblog/spt-server:nightly
@@ -448,8 +454,8 @@ jobs:
             > After downloading, please use extraction software like WinRAR or [7-Zip](https://www.7-zip.org/) to unzip the files, then copy them to the Tarkov root directory. Do not use Windows File Explorer to directly open and copy the files.
 
             Full Changelog:
-              - windows: [${{ needs.prepare.outputs.BUILT_HASH }}....${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SERVER_MEDUSA }}/compare/${{ needs.prepare.outputs.BUILT_HASH }}...${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }})
               - linux: [${{ needs.prepare.outputs.BUILT_HASH }}....${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SERVER_MEDUSA }}/compare/${{ needs.prepare.outputs.BUILT_HASH }}...${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID }})
+              - windows: [${{ needs.prepare.outputs.BUILT_HASH }}....${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SERVER_MEDUSA }}/compare/${{ needs.prepare.outputs.BUILT_HASH }}...${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }})
 
           files: |
             ${{ needs.build-server-windows.outputs.WIN_RELEASE_FILE }}
@@ -469,14 +475,18 @@ jobs:
 
             Server commit:
 
-              - windows: [${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SERVER_MEDUSA }}/src/commit/${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }})
               - linux: [${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SERVER_MEDUSA }}/src/commit/${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID }})
+              - windows: [${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SERVER_MEDUSA }}/src/commit/${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }})
 
             Tarkov: ***${{ needs.prepare.outputs.EFT_VERSION }}***
 
             Build time: ***${{ needs.prepare.outputs.BUILD_DATE_TIME }}***
 
-            ***Docker Supported***:
+            **Docker Supported For linux/amd64**:
+
+            image id: `${{ needs.build-server-linux.outputs.DOCKER_IMAGEID }}`
+
+            digest: `${{ needs.build-server-linux.outputs.DOCKER_DIGEST }}`
 
             ```bash
             docker pull stblog/spt-server:nightly
@@ -489,6 +499,6 @@ jobs:
             > After downloading, please use extraction software like WinRAR or [7-Zip](https://www.7-zip.org/) to unzip the files, then copy them to the Tarkov root directory. Do not use Windows File Explorer to directly open and copy the files.
 
             Full Changelog:
-              - windows: [${{ needs.prepare.outputs.BUILT_HASH }}....${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SERVER_MEDUSA }}/compare/${{ needs.prepare.outputs.BUILT_HASH }}...${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }})
               - linux: [${{ needs.prepare.outputs.BUILT_HASH }}....${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SERVER_MEDUSA }}/compare/${{ needs.prepare.outputs.BUILT_HASH }}...${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID }})
+              - windows: [${{ needs.prepare.outputs.BUILT_HASH }}....${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SERVER_MEDUSA }}/compare/${{ needs.prepare.outputs.BUILT_HASH }}...${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }})
 
