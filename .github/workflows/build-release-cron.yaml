@@ -9,8 +9,8 @@ on:
 
 env:
   SERVER_URL: https://dev.sp-tarkov.com
-  REPOSITORY_SERVER: SPT/Server
-  REPOSITORY_SERVER_MEDUSA: medusa/spt-server
+  REPOSITORY_SPT_SERVER: SPT/Server
+  REPOSITORY_SPT_SERVER_MEDUSA: medusa/spt-server
   RELEASE_BRANCH: 3.10.0-DEV
 
 jobs:
@@ -23,7 +23,9 @@ jobs:
 
       SPT_VERSION: ${{ steps.versions.outputs.SPT_VERSION }}
       EFT_VERSION: ${{ steps.versions.outputs.EFT_VERSION }}
-      SERVER_COMMIT: ${{ steps.versions.outputs.SERVER_COMMIT }}
+      SPT_SERVER_COMMIT: ${{ steps.versions.outputs.SPT_SERVER_COMMIT }}
+      SPT_SERVER_COMMIT_TIME: ${{ steps.versions.outputs.SPT_SERVER_COMMIT_TIME }}
+      BUILD_DATE: ${{ steps.versions.outputs.DATE }}
       BUILD_DATE_TIME: ${{ steps.versions.outputs.DATE_TIME }}
 
     steps:
@@ -34,17 +36,17 @@ jobs:
       - name: Get Latest Tag From SPT
         id: get-latest-tag
         run: |
-          git clone -b ${{ env.RELEASE_BRANCH }} ${{ env.SERVER_URL }}/${{ env.REPOSITORY_SERVER }}.git Server
+          git clone -b ${{ env.RELEASE_BRANCH }} ${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER }}.git Server
           cd Server
-          SERVER_LATEST_TAG=$(git describe --tags --abbrev=0)
-          echo "👽 SERVER_LATEST_TAG = $SERVER_LATEST_TAG"
-          echo "SERVER_LATEST_TAG=$SERVER_LATEST_TAG" >> $GITHUB_OUTPUT
+          SPT_SERVER_LATEST_TAG=$(git describe --tags --abbrev=0)
+          echo "👽 SPT_SERVER_LATEST_TAG = $SPT_SERVER_LATEST_TAG"
+          echo "SPT_SERVER_LATEST_TAG=$SPT_SERVER_LATEST_TAG" >> $GITHUB_OUTPUT
         shell: bash
       - name: Compare Tags
         id: compare-tags
         run: |
           server_last_built_tag=$(cat trigger.release)
-          server_latest_tag=${{ steps.get-latest-tag.outputs.SERVER_LATEST_TAG }}
+          server_latest_tag=${{ steps.get-latest-tag.outputs.SPT_SERVER_LATEST_TAG }}
           if [ "$server_last_built_tag" != "$server_latest_tag" ]; then
             echo "✅ There is different between last-built-tag and lastest-tag, continue to build."
             echo "BUILT_TAG=$server_last_built_tag" >> $GITHUB_OUTPUT
@@ -60,9 +62,10 @@ jobs:
         if: steps.compare-tags.outputs.PROCEED == 'true'
         run: |
           cd Server
-          SERVER_TAG=${{ steps.get-latest-tag.outputs.SERVER_LATEST_TAG }}
+          SERVER_TAG=${{ steps.get-latest-tag.outputs.SPT_SERVER_LATEST_TAG }}
           git checkout $SERVER_TAG
-          SERVER_COMMIT=$(git rev-parse --short $SERVER_TAG)
+          SPT_SERVER_COMMIT=$(git rev-parse --short $SERVER_TAG)
+          SPT_SERVER_COMMIT_TIME=$(git log --pretty=format:"%ai" -1)
 
           # Extract versions from core.json
           cp -v project/assets/configs/core.json .
@@ -72,10 +75,15 @@ jobs:
           echo "👽 SPT_VERSION = $SPT_VERSION"
           echo "👽 EFT_VERSION = $EFT_VERSION"
           echo "👽 SERVER_TAG = $SERVER_TAG"
-          echo "👽 SERVER_COMMIT = $SERVER_COMMIT"
+          echo "👽 SPT_SERVER_COMMIT = $SPT_SERVER_COMMIT"
+          echo "👽 SPT_SERVER_COMMIT_TIME = $SPT_SERVER_COMMIT_TIME"
+
           echo "SPT_VERSION=$SPT_VERSION" >> $GITHUB_OUTPUT
           echo "EFT_VERSION=$EFT_VERSION" >> $GITHUB_OUTPUT
-          echo "SERVER_COMMIT=$SERVER_COMMIT" >> $GITHUB_OUTPUT
+          echo "SPT_SERVER_COMMIT=$SPT_SERVER_COMMIT" >> $GITHUB_OUTPUT
+          echo "SPT_SERVER_COMMIT_TIME=$SPT_SERVER_COMMIT_TIME" >> $GITHUB_OUTPUT
+
+          echo "DATE=$(date +%Y%m%d)" >> $GITHUB_OUTPUT
           echo "DATE_TIME=$(date +%Y%m%d%H%M%S)" >> $GITHUB_OUTPUT
         shell: bash
 
@@ -103,7 +111,7 @@ jobs:
 
       - name: Clone Medusa's Windows Server Code
         run: |
-          git clone -b ${{ env.RELEASE_BRANCH }}_windows ${{ env.SERVER_URL }}/${{ env.REPOSITORY_SERVER_MEDUSA }} ${{ env.SOURCECODE_DIR }}
+          git clone -b ${{ env.RELEASE_BRANCH }}_windows ${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_MEDUSA }} ${{ env.SOURCECODE_DIR }}
           cd ${{ env.SOURCECODE_DIR }}
           git lfs pull
         shell: bash
@@ -117,7 +125,7 @@ jobs:
         run: |
           cd ${{ env.SOURCECODE_DIR }}
           git pull
-          git fetch -u ${{ env.SERVER_URL }}/${{ env.REPOSITORY_SERVER }}.git ${{ needs.prepare.outputs.TARGET_TAG }}:SPT-${{ needs.prepare.outputs.TARGET_TAG }}
+          git fetch -u ${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER }}.git ${{ needs.prepare.outputs.TARGET_TAG }}:SPT-${{ needs.prepare.outputs.TARGET_TAG }}
           git merge -m "🤖 Merge tag \`${{ needs.prepare.outputs.TARGET_TAG }}\` from SPT" --no-ff SPT-${{ needs.prepare.outputs.TARGET_TAG }}
         shell: bash
 
@@ -181,7 +189,7 @@ jobs:
         run: |
           cd ${{ env.SOURCECODE_DIR }}
           git pull
-          REMOTE_URL="https://medusa:${{ secrets.GIT_PUSH_TO_SPT }}@dev.sp-tarkov.com/${{ env.REPOSITORY_SERVER_MEDUSA }}.git"
+          REMOTE_URL="https://medusa:${{ secrets.GIT_PUSH_TO_SPT }}@dev.sp-tarkov.com/${{ env.REPOSITORY_SPT_SERVER_MEDUSA }}.git"
           git remote set-url origin "$REMOTE_URL"
           git push
         shell: bash
@@ -217,7 +225,7 @@ jobs:
 
       - name: Clone Medusa's Linux Server Code
         run: |
-          git clone -b ${{ env.RELEASE_BRANCH }} ${{ env.SERVER_URL }}/${{ env.REPOSITORY_SERVER_MEDUSA }} ${{ env.SOURCECODE_DIR }}
+          git clone -b ${{ env.RELEASE_BRANCH }} ${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_MEDUSA }} ${{ env.SOURCECODE_DIR }}
           cd ${{ env.SOURCECODE_DIR }}
           git lfs pull
         shell: bash
@@ -231,7 +239,7 @@ jobs:
         run: |
           cd ${{ env.SOURCECODE_DIR }}
           git pull
-          git fetch -u ${{ env.SERVER_URL }}/${{ env.REPOSITORY_SERVER }}.git ${{ needs.prepare.outputs.TARGET_TAG }}:SPT-${{ needs.prepare.outputs.TARGET_TAG }}
+          git fetch -u ${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER }}.git ${{ needs.prepare.outputs.TARGET_TAG }}:SPT-${{ needs.prepare.outputs.TARGET_TAG }}
           git merge -m "🤖 Merge tag \`${{ needs.prepare.outputs.TARGET_TAG }}\` from SPT" --no-ff SPT-${{ needs.prepare.outputs.TARGET_TAG }}
         shell: bash
 
@@ -375,7 +383,7 @@ jobs:
         run: |
           cd ${{ env.SOURCECODE_DIR }}
           git pull
-          REMOTE_URL="https://medusa:${{ secrets.GIT_PUSH_TO_SPT }}@dev.sp-tarkov.com/${{ env.REPOSITORY_SERVER_MEDUSA }}.git"
+          REMOTE_URL="https://medusa:${{ secrets.GIT_PUSH_TO_SPT }}@dev.sp-tarkov.com/${{ env.REPOSITORY_SPT_SERVER_MEDUSA }}.git"
           git remote set-url origin "$REMOTE_URL"
           git push
           git tag -d ${{ needs.prepare.outputs.TARGET_TAG }}
@@ -446,19 +454,20 @@ jobs:
           body: |
             SPT: ***${{ needs.prepare.outputs.SPT_VERSION }}***
 
-            Server commit:
-
-              - windows: [${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SERVER_MEDUSA }}/src/commit/${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }})
-              - linux: [${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SERVER_MEDUSA }}/src/commit/${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID }})
-
             Tarkov: ***${{ needs.prepare.outputs.EFT_VERSION }}***
+
+            [SPT/Server](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER }}) commit hash: [${{ needs.prepare.outputs.SPT_SERVER_COMMIT }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER }}/src/commit/${{ needs.prepare.outputs.SPT_SERVER_COMMIT }}), commit time: **${{ needs.prepare.outputs.SPT_SERVER_COMMIT_TIME }}**
+
+            [medusa/spt-server](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_MEDUSA }}) commit:
+              - linux: [${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_MEDUSA }}/src/commit/${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID }})
+              - windows: [${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_MEDUSA }}/src/commit/${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }})
 
             Build time: ***${{ needs.prepare.outputs.BUILD_DATE_TIME }}***
 
             > [!WARNING]
             > After downloading, please use extraction software like WinRAR or [7-Zip](https://www.7-zip.org/) to unzip the files, then copy them to the Tarkov root directory. Do not use Windows File Explorer to directly open and copy the files.
 
-            ***Docker Supported***:
+            ***Docker Supported For linux/amd64***:
 
             ```bash
             docker pull stblog/spt-server:${{ needs.prepare.outputs.TARGET_TAG }}
@@ -466,8 +475,8 @@ jobs:
             ```
 
             Full Changelog:
-              - windows: [${{ needs.prepare.outputs.BUILT_TAG }}....${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SERVER_MEDUSA }}/compare/${{ needs.prepare.outputs.BUILT_TAG }}...${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }})
-              - linux: [${{ needs.prepare.outputs.BUILT_TAG }}....${{ needs.prepare.outputs.TARGET_TAG }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SERVER_MEDUSA }}/compare/${{ needs.prepare.outputs.BUILT_TAG }}...${{ needs.prepare.outputs.TARGET_TAG }})
+              - linux: [${{ needs.prepare.outputs.BUILT_TAG }}....${{ needs.prepare.outputs.TARGET_TAG }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_MEDUSA }}/compare/${{ needs.prepare.outputs.BUILT_TAG }}...${{ needs.prepare.outputs.TARGET_TAG }})
+              - windows: [${{ needs.prepare.outputs.BUILT_TAG }}....${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_MEDUSA }}/compare/${{ needs.prepare.outputs.BUILT_TAG }}...${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }})
 
           files: |
             ${{ needs.build-server-windows.outputs.WIN_RELEASE_FILE }}
@@ -484,10 +493,11 @@ jobs:
           body: |
             SPT: ***${{ needs.prepare.outputs.SPT_VERSION }}***
 
-            Server commit:
+            [SPT/Server](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER }}) commit hash: [${{ needs.prepare.outputs.SPT_SERVER_COMMIT }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER }}/src/commit/${{ needs.prepare.outputs.SPT_SERVER_COMMIT }}), commit time: **${{ needs.prepare.outputs.SPT_SERVER_COMMIT_TIME }}**
 
-              - windows: [${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SERVER_MEDUSA }}/src/commit/${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }})
-              - linux: [${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SERVER_MEDUSA }}/src/commit/${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID }})
+            [medusa/spt-server](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_MEDUSA }}) commit:
+              - linux: [${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_MEDUSA }}/src/commit/${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID }})
+              - windows: [${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_MEDUSA }}/src/commit/${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }})
 
             Tarkov: ***${{ needs.prepare.outputs.EFT_VERSION }}***
 
@@ -496,7 +506,7 @@ jobs:
             > [!WARNING]
             > After downloading, please use extraction software like WinRAR or [7-Zip](https://www.7-zip.org/) to unzip the files, then copy them to the Tarkov root directory. Do not use Windows File Explorer to directly open and copy the files.
 
-            ***Docker supported***:
+            ***Docker Supported For linux/amd64***:
 
             ```bash
             docker pull stblog/spt-server:${{ needs.prepare.outputs.TARGET_TAG }}
@@ -504,8 +514,8 @@ jobs:
             ```
 
             Full Changelog:
-              - windows: [${{ needs.prepare.outputs.BUILT_TAG }}....${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SERVER_MEDUSA }}/compare/${{ needs.prepare.outputs.BUILT_TAG }}...${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }})
-              - linux: [${{ needs.prepare.outputs.BUILT_TAG }}....${{ needs.prepare.outputs.TARGET_TAG }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SERVER_MEDUSA }}/compare/${{ needs.prepare.outputs.BUILT_TAG }}...${{ needs.prepare.outputs.TARGET_TAG }})
+              - linux: [${{ needs.prepare.outputs.BUILT_TAG }}....${{ needs.prepare.outputs.TARGET_TAG }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_MEDUSA }}/compare/${{ needs.prepare.outputs.BUILT_TAG }}...${{ needs.prepare.outputs.TARGET_TAG }})
+              - windows: [${{ needs.prepare.outputs.BUILT_TAG }}....${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_MEDUSA }}/compare/${{ needs.prepare.outputs.BUILT_TAG }}...${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }})
 
           files: |
             ${{ needs.build-server-windows.outputs.WIN_RELEASE_FILE }}
@@ -518,7 +528,7 @@ jobs:
         uses: akkuman/gitea-release-action@v1
         with:
           server_url: ${{ env.SERVER_URL }}
-          repository: ${{ env.REPOSITORY_SERVER_MEDUSA }}
+          repository: ${{ env.REPOSITORY_SPT_SERVER_MEDUSA }}
           token: ${{ secrets.GIT_PUSH_TO_SPT }}
           name: ${{ needs.prepare.outputs.TARGET_TAG }}
           tag_name: ${{ needs.prepare.outputs.TARGET_TAG }}
@@ -527,9 +537,11 @@ jobs:
           body: |
             SPT: ***${{ needs.prepare.outputs.SPT_VERSION }}***
 
-            Server commit:
-              - linux: [${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SERVER_MEDUSA }}/src/commit/${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID }})
-              - windows: [${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SERVER_MEDUSA }}/src/commit/${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }})
+            [SPT/Server](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER }}) commit hash: [${{ needs.prepare.outputs.SPT_SERVER_COMMIT }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER }}/src/commit/${{ needs.prepare.outputs.SPT_SERVER_COMMIT }}), commit time: **${{ needs.prepare.outputs.SPT_SERVER_COMMIT_TIME }}**
+
+            [medusa/spt-server](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_MEDUSA }}) commit:
+              - linux: [${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_MEDUSA }}/src/commit/${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID }})
+              - windows: [${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_MEDUSA }}/src/commit/${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }})
 
             Tarkov: ***${{ needs.prepare.outputs.EFT_VERSION }}***
 
@@ -548,9 +560,8 @@ jobs:
             > After downloading, please use extraction software like WinRAR or [7-Zip](https://www.7-zip.org/) to unzip the files, then copy them to the Tarkov root directory. Do not use Windows File Explorer to directly open and copy the files.
 
             Full Changelog:
-              - linux: [${{ needs.prepare.outputs.BUILT_TAG }}....${{ needs.prepare.outputs.TARGET_TAG }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SERVER_MEDUSA }}/compare/${{ needs.prepare.outputs.BUILT_TAG }}...${{ needs.prepare.outputs.TARGET_TAG }})
-              - windows: [${{ needs.prepare.outputs.BUILT_TAG }}....${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SERVER_MEDUSA }}/compare/${{ needs.prepare.outputs.BUILT_TAG }}...${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }})
-
+              - linux: [${{ needs.prepare.outputs.BUILT_TAG }}....${{ needs.prepare.outputs.TARGET_TAG }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_MEDUSA }}/compare/${{ needs.prepare.outputs.BUILT_TAG }}...${{ needs.prepare.outputs.TARGET_TAG }})
+              - windows: [${{ needs.prepare.outputs.BUILT_TAG }}....${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_MEDUSA }}/compare/${{ needs.prepare.outputs.BUILT_TAG }}...${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }})
 
       - name: Create Gitea Release
         id: create_gitea_release
@@ -558,7 +569,7 @@ jobs:
         uses: akkuman/gitea-release-action@v1
         with:
           server_url: ${{ env.SERVER_URL }}
-          repository: ${{ env.REPOSITORY_SERVER_MEDUSA }}
+          repository: ${{ env.REPOSITORY_SPT_SERVER_MEDUSA }}
           token: ${{ secrets.GIT_PUSH_TO_SPT }}
           name: ${{ needs.prepare.outputs.TARGET_TAG }}
           tag_name: ${{ needs.prepare.outputs.TARGET_TAG }}
@@ -567,9 +578,11 @@ jobs:
           body: |
             SPT: ***${{ needs.prepare.outputs.SPT_VERSION }}***
 
-            Server commit:
-              - linux: [${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SERVER_MEDUSA }}/src/commit/${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID }})
-              - windows: [${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SERVER_MEDUSA }}/src/commit/${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }})
+            [SPT/Server](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER }}) commit hash: [${{ needs.prepare.outputs.SPT_SERVER_COMMIT }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER }}/src/commit/${{ needs.prepare.outputs.SPT_SERVER_COMMIT }}), commit time: **${{ needs.prepare.outputs.SPT_SERVER_COMMIT_TIME }}**
+
+            [medusa/spt-server](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_MEDUSA }}) commit:
+              - linux: [${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_MEDUSA }}/src/commit/${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID }})
+              - windows: [${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_MEDUSA }}/src/commit/${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }})
 
             Tarkov: ***${{ needs.prepare.outputs.EFT_VERSION }}***
 
@@ -588,6 +601,6 @@ jobs:
             > After downloading, please use extraction software like WinRAR or [7-Zip](https://www.7-zip.org/) to unzip the files, then copy them to the Tarkov root directory. Do not use Windows File Explorer to directly open and copy the files.
 
             Full Changelog:
-              - linux: [${{ needs.prepare.outputs.BUILT_TAG }}....${{ needs.prepare.outputs.TARGET_TAG }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SERVER_MEDUSA }}/compare/${{ needs.prepare.outputs.BUILT_TAG }}...${{ needs.prepare.outputs.TARGET_TAG }})
-              - windows: [${{ needs.prepare.outputs.BUILT_TAG }}....${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SERVER_MEDUSA }}/compare/${{ needs.prepare.outputs.BUILT_TAG }}...${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }})
+              - linux: [${{ needs.prepare.outputs.BUILT_TAG }}....${{ needs.prepare.outputs.TARGET_TAG }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_MEDUSA }}/compare/${{ needs.prepare.outputs.BUILT_TAG }}...${{ needs.prepare.outputs.TARGET_TAG }})
+              - windows: [${{ needs.prepare.outputs.BUILT_TAG }}....${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_MEDUSA }}/compare/${{ needs.prepare.outputs.BUILT_TAG }}...${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }})
 

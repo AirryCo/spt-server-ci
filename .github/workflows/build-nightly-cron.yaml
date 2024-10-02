@@ -9,9 +9,9 @@ on:
 
 env:
   SERVER_URL: https://dev.sp-tarkov.com
-  REPOSITORY_SERVER: SPT/Server
-  REPOSITORY_SERVER_MEDUSA: medusa/spt-server
-  REPOSITORY_SERVER_CI: medusa/spt-server-ci
+  REPOSITORY_SPT_SERVER: SPT/Server
+  REPOSITORY_SPT_SERVER_MEDUSA: medusa/spt-server
+  REPOSITORY_SPT_SERVER_CI: medusa/spt-server-ci
   NIGHTLY_BRANCH: 3.10.0-DEV
 
 jobs:
@@ -22,7 +22,7 @@ jobs:
       BUILT_HASH: ${{ steps.compare-hash.outputs.BUILT_HASH }}
       SPT_VERSION: ${{ steps.versions.outputs.SPT_VERSION }}
       EFT_VERSION: ${{ steps.versions.outputs.EFT_VERSION }}
-      SERVER_COMMIT: ${{ steps.versions.outputs.SERVER_COMMIT }}
+      SPT_SERVER_COMMIT: ${{ steps.versions.outputs.SPT_SERVER_COMMIT }}
       BUILD_DATE_TIME: ${{ steps.versions.outputs.DATE_TIME }}
 
     steps:
@@ -33,16 +33,16 @@ jobs:
       - name: Get Latest Commit From SPT
         id: get-latest-commit
         run: |
-          SERVER_LATEST_COMMIT_HASH=$(git ls-remote ${{ env.SERVER_URL }}/${{ env.REPOSITORY_SERVER }}.git refs/heads/${{ env.NIGHTLY_BRANCH }} | awk '{print $1}')
-          echo "👽 SERVER_LATEST_COMMIT_HASH = $SERVER_LATEST_COMMIT_HASH"
-          echo "SERVER_LATEST_COMMIT_HASH=$SERVER_LATEST_COMMIT_HASH" >> $GITHUB_OUTPUT
+          SPT_SERVER_LATEST_COMMIT_HASH=$(git ls-remote ${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER }}.git refs/heads/${{ env.NIGHTLY_BRANCH }} | awk '{print $1}')
+          echo "👽 SPT_SERVER_LATEST_COMMIT_HASH = $SPT_SERVER_LATEST_COMMIT_HASH"
+          echo "SPT_SERVER_LATEST_COMMIT_HASH=$SPT_SERVER_LATEST_COMMIT_HASH" >> $GITHUB_OUTPUT
         shell: bash
       - name: Compare Hashes
         id: compare-hash
         run: |
           source trigger.nightly
           server_last_build_hash=$server
-          server_latest_commit_hash=${{ steps.get-latest-commit.outputs.SERVER_LATEST_COMMIT_HASH }}
+          server_latest_commit_hash=${{ steps.get-latest-commit.outputs.SPT_SERVER_LATEST_COMMIT_HASH }}
           if [ "$server_last_build_hash" != "$server_latest_commit_hash" ]; then
             echo "✅ There is different between last-built-hash and lastest-commit-hash, continue to build."
             echo "BUILT_HASH=${server_last_build_hash:0:8}" >> $GITHUB_OUTPUT
@@ -56,19 +56,19 @@ jobs:
         id: versions
         if: steps.compare-hash.outputs.PROCEED == 'true'
         run: |
-          SERVER_COMMIT=${{ steps.get-latest-commit.outputs.SERVER_LATEST_COMMIT_HASH }}
+          SPT_SERVER_COMMIT=${{ steps.get-latest-commit.outputs.SPT_SERVER_LATEST_COMMIT_HASH }}
 
           # Extract versions from core.json
-          wget ${{ env.SERVER_URL }}/${{ env.REPOSITORY_SERVER }}/raw/branch/${{ env.NIGHTLY_BRANCH }}/project/assets/configs/core.json
+          wget ${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER }}/raw/branch/${{ env.NIGHTLY_BRANCH }}/project/assets/configs/core.json
           SPT_VERSION=$(jq -r '.sptVersion' core.json)
           EFT_VERSION=$(jq -r '.compatibleTarkovVersion' core.json)
 
           echo "👽 SPT_VERSION = $SPT_VERSION"
           echo "👽 EFT_VERSION = $EFT_VERSION"
-          echo "👽 SERVER_COMMIT = $SERVER_COMMIT"
+          echo "👽 SPT_SERVER_COMMIT = $SPT_SERVER_COMMIT"
           echo "SPT_VERSION=$SPT_VERSION" >> $GITHUB_OUTPUT
           echo "EFT_VERSION=$EFT_VERSION" >> $GITHUB_OUTPUT
-          echo "SERVER_COMMIT=$SERVER_COMMIT" >> $GITHUB_OUTPUT
+          echo "SPT_SERVER_COMMIT=$SPT_SERVER_COMMIT" >> $GITHUB_OUTPUT
           echo "DATE_TIME=$(date +%Y%m%d%H%M%S)" >> $GITHUB_OUTPUT
         shell: bash
 
@@ -80,6 +80,7 @@ jobs:
       OUTPUT_DIR: spt-server
       SOURCECODE_DIR: c:/snapshot
     outputs:
+      SPT_SERVER_COMMIT_TIME: ${{ steps.merge.outputs.SPT_SERVER_COMMIT_TIME }}
       WIN_COMMIT_ID: ${{ steps.debug-info.outputs.COMMIT_ID }}
       WIN_ARTIFACT: ${{ steps.filename.outputs.WIN_ARTIFACT }}
       WIN_RELEASE_FILE: ${{ steps.filename.outputs.WIN_RELEASE }}
@@ -96,7 +97,7 @@ jobs:
 
       - name: Clone Medusa's Windows Server Code
         run: |
-          git clone -b ${{ env.NIGHTLY_BRANCH }}_windows ${{ env.SERVER_URL }}/${{ env.REPOSITORY_SERVER_MEDUSA }} ${{ env.SOURCECODE_DIR }}
+          git clone -b ${{ env.NIGHTLY_BRANCH }}_windows ${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_MEDUSA }} ${{ env.SOURCECODE_DIR }}
           cd ${{ env.SOURCECODE_DIR }}
           git lfs pull
         shell: bash
@@ -107,11 +108,16 @@ jobs:
           node-version: 20.11.1
 
       - name: Merge Server Code From SPT
+        id: merge
         run: |
           cd ${{ env.SOURCECODE_DIR }}
           git pull
-          git fetch -u ${{ env.SERVER_URL }}/${{ env.REPOSITORY_SERVER }}.git ${{ env.NIGHTLY_BRANCH }}:SPT-${{ env.NIGHTLY_BRANCH }}
+          git fetch -u ${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER }}.git ${{ env.NIGHTLY_BRANCH }}:SPT-${{ env.NIGHTLY_BRANCH }}
           git merge -m "🤖 Merge branch '${{ env.NIGHTLY_BRANCH }}' from SPT" --no-ff SPT-${{ env.NIGHTLY_BRANCH }}
+
+          SPT_SERVER_COMMIT_TIME=$(git log --pretty=format:"%ai" SPT-${{ env.NIGHTLY_BRANCH }} -1)
+          echo "👽 SPT_SERVER_COMMIT_TIME = $SPT_SERVER_COMMIT_TIME"
+          echo "SPT_SERVER_COMMIT_TIME=$SPT_SERVER_COMMIT_TIME" >> $GITHUB_OUTPUT
         shell: bash
 
       - name: Runner Debug Information
@@ -174,7 +180,7 @@ jobs:
         run: |
           cd ${{ env.SOURCECODE_DIR }}
           git pull
-          REMOTE_URL="https://medusa:${{ secrets.GIT_PUSH_TO_SPT }}@dev.sp-tarkov.com/${{ env.REPOSITORY_SERVER_MEDUSA }}.git"
+          REMOTE_URL="https://medusa:${{ secrets.GIT_PUSH_TO_SPT }}@dev.sp-tarkov.com/${{ env.REPOSITORY_SPT_SERVER_MEDUSA }}.git"
           git remote set-url origin "$REMOTE_URL"
           git push
         shell: bash
@@ -195,6 +201,7 @@ jobs:
       GHCR_REPOSITORY: spt-server
 
     outputs:
+      SPT_SERVER_COMMIT_TIME: ${{ steps.merge.outputs.SPT_SERVER_COMMIT_TIME }}
       LINUX_COMMIT_ID: ${{ steps.debug-info.outputs.COMMIT_ID }}
       LINUX_ARTIFACT: ${{ steps.filename.outputs.LINUX_ARTIFACT }}
       LINUX_RELEASE_FILE: ${{ steps.filename.outputs.LINUX_RELEASE }}
@@ -211,9 +218,9 @@ jobs:
           git config --global user.name "github-actions[bot]"
           git config --global user.email "bot@github.com"
 
-      - name: Clone Medusa's Server Code
+      - name: Clone Medusa's Linux Server Code
         run: |
-          git clone -b ${{ env.NIGHTLY_BRANCH }} ${{ env.SERVER_URL }}/${{ env.REPOSITORY_SERVER_MEDUSA }} ${{ env.SOURCECODE_DIR }}
+          git clone -b ${{ env.NIGHTLY_BRANCH }} ${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_MEDUSA }} ${{ env.SOURCECODE_DIR }}
           cd ${{ env.SOURCECODE_DIR }}
           git lfs pull
         shell: bash
@@ -224,11 +231,16 @@ jobs:
           node-version: 20.11.1
 
       - name: Merge Server Code From SPT
+        id: merge
         run: |
           cd ${{ env.SOURCECODE_DIR }}
           git pull
-          git fetch -u ${{ env.SERVER_URL }}/${{ env.REPOSITORY_SERVER }}.git ${{ env.NIGHTLY_BRANCH }}:SPT-${{ env.NIGHTLY_BRANCH }}
+          git fetch -u ${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER }}.git ${{ env.NIGHTLY_BRANCH }}:SPT-${{ env.NIGHTLY_BRANCH }}
           git merge -m "🤖 Merge branch '${{ env.NIGHTLY_BRANCH }}' from SPT" --no-ff SPT-${{ env.NIGHTLY_BRANCH }}
+
+          SPT_SERVER_COMMIT_TIME=$(git log --pretty=format:"%ai" SPT-${{ env.NIGHTLY_BRANCH }} -1)
+          echo "👽 SPT_SERVER_COMMIT_TIME = $SPT_SERVER_COMMIT_TIME"
+          echo "SPT_SERVER_COMMIT_TIME=$SPT_SERVER_COMMIT_TIME" >> $GITHUB_OUTPUT
         shell: bash
 
       - name: Runner Debug Information
@@ -342,7 +354,7 @@ jobs:
         run: |
           cd ${{ env.SOURCECODE_DIR }}
           git pull
-          REMOTE_URL="https://medusa:${{ secrets.GIT_PUSH_TO_SPT }}@dev.sp-tarkov.com/${{ env.REPOSITORY_SERVER_MEDUSA }}.git"
+          REMOTE_URL="https://medusa:${{ secrets.GIT_PUSH_TO_SPT }}@dev.sp-tarkov.com/${{ env.REPOSITORY_SPT_SERVER_MEDUSA }}.git"
           git remote set-url origin "$REMOTE_URL"
           git push
         shell: bash
@@ -361,7 +373,7 @@ jobs:
           git config user.email "bot@stblog.com.cn"
           git pull
           rm trigger.nightly
-          server=${{ needs.prepare.outputs.SERVER_COMMIT }}
+          server=${{ needs.prepare.outputs.SPT_SERVER_COMMIT }}
           echo "server=$server" > trigger.nightly
           git add trigger.nightly
           git commit -m "🤖 up to \`$server\`."
@@ -369,16 +381,16 @@ jobs:
         shell: bash
       - name: Update trigger and Push to SP-Tarkov
         run: |
-          git clone --depth=1 ${{ env.SERVER_URL }}/${{ env.REPOSITORY_SERVER_CI }}.git SP-Tarkov
+          git clone --depth=1 ${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_CI }}.git SP-Tarkov
           cd SP-Tarkov
           git config user.name "github-actions[bot]"
           git config user.email "bot@stblog.com.cn"
           rm trigger.nightly
-          server=${{ needs.prepare.outputs.SERVER_COMMIT }}
+          server=${{ needs.prepare.outputs.SPT_SERVER_COMMIT }}
           echo "server=$server" > trigger.nightly
           git add trigger.nightly
           git commit -m "🤖 up to \`$server\`."
-          REMOTE_URL="https://medusa:${{ secrets.GIT_PUSH_TO_SPT }}@dev.sp-tarkov.com/${{ env.REPOSITORY_SERVER_CI }}.git"
+          REMOTE_URL="https://medusa:${{ secrets.GIT_PUSH_TO_SPT }}@dev.sp-tarkov.com/${{ env.REPOSITORY_SPT_SERVER_CI }}.git"
           git remote set-url origin "$REMOTE_URL"
           git push
         shell: bash
@@ -431,11 +443,13 @@ jobs:
           body: |
             SPT: ***${{ needs.prepare.outputs.SPT_VERSION }}***
 
-            Server commit:
-              - linux: [${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SERVER_MEDUSA }}/src/commit/${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID }})
-              - windows: [${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SERVER_MEDUSA }}/src/commit/${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }})
-
             Tarkov: ***${{ needs.prepare.outputs.EFT_VERSION }}***
+
+            [SPT/Server](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER }}) commit hash: [${{ needs.prepare.outputs.SPT_SERVER_COMMIT }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER }}/src/commit/${{ needs.prepare.outputs.SPT_SERVER_COMMIT }}), commit date: **${{ needs.build-server-linux.outputs.SPT_SERVER_COMMIT_TIME }}**
+
+            [medusa/spt-server](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_MEDUSA }}) commit:
+              - linux: [${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_MEDUSA }}/src/commit/${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID }})
+              - windows: [${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_MEDUSA }}/src/commit/${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }})
 
             Build time: ***${{ needs.prepare.outputs.BUILD_DATE_TIME }}***
 
@@ -454,8 +468,8 @@ jobs:
             > After downloading, please use extraction software like WinRAR or [7-Zip](https://www.7-zip.org/) to unzip the files, then copy them to the Tarkov root directory. Do not use Windows File Explorer to directly open and copy the files.
 
             Full Changelog:
-              - linux: [${{ needs.prepare.outputs.BUILT_HASH }}....${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SERVER_MEDUSA }}/compare/${{ needs.prepare.outputs.BUILT_HASH }}...${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID }})
-              - windows: [${{ needs.prepare.outputs.BUILT_HASH }}....${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SERVER_MEDUSA }}/compare/${{ needs.prepare.outputs.BUILT_HASH }}...${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }})
+              - linux: [${{ needs.prepare.outputs.BUILT_HASH }}....${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_MEDUSA }}/compare/${{ needs.prepare.outputs.BUILT_HASH }}...${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID }})
+              - windows: [${{ needs.prepare.outputs.BUILT_HASH }}....${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_MEDUSA }}/compare/${{ needs.prepare.outputs.BUILT_HASH }}...${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }})
 
           files: |
             ${{ needs.build-server-windows.outputs.WIN_RELEASE_FILE }}
@@ -465,7 +479,7 @@ jobs:
         uses: akkuman/gitea-release-action@v1
         with:
           server_url: ${{ env.SERVER_URL }}
-          repository: ${{ env.REPOSITORY_SERVER_CI }}
+          repository: ${{ env.REPOSITORY_SPT_SERVER_CI }}
           token: ${{ secrets.GIT_PUSH_TO_SPT }}
           name: ${{ needs.prepare.outputs.BUILD_DATE_TIME }}
           tag_name: ${{ needs.prepare.outputs.BUILD_DATE_TIME }}
@@ -473,12 +487,13 @@ jobs:
           body: |
             SPT: ***${{ needs.prepare.outputs.SPT_VERSION }}***
 
-            Server commit:
-
-              - linux: [${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SERVER_MEDUSA }}/src/commit/${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID }})
-              - windows: [${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SERVER_MEDUSA }}/src/commit/${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }})
-
             Tarkov: ***${{ needs.prepare.outputs.EFT_VERSION }}***
+
+            [SPT/Server](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER }}) commit hash: [${{ needs.prepare.outputs.SPT_SERVER_COMMIT }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER }}/src/commit/${{ needs.prepare.outputs.SPT_SERVER_COMMIT }}), commit date: **${{ needs.build-server-linux.outputs.SPT_SERVER_COMMIT_TIME }}**
+
+            [medusa/spt-server](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_MEDUSA }}) commit:
+              - linux: [${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_MEDUSA }}/src/commit/${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID }})
+              - windows: [${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_MEDUSA }}/src/commit/${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }})
 
             Build time: ***${{ needs.prepare.outputs.BUILD_DATE_TIME }}***
 
@@ -499,6 +514,6 @@ jobs:
             > After downloading, please use extraction software like WinRAR or [7-Zip](https://www.7-zip.org/) to unzip the files, then copy them to the Tarkov root directory. Do not use Windows File Explorer to directly open and copy the files.
 
             Full Changelog:
-              - linux: [${{ needs.prepare.outputs.BUILT_HASH }}....${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SERVER_MEDUSA }}/compare/${{ needs.prepare.outputs.BUILT_HASH }}...${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID }})
-              - windows: [${{ needs.prepare.outputs.BUILT_HASH }}....${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SERVER_MEDUSA }}/compare/${{ needs.prepare.outputs.BUILT_HASH }}...${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }})
+              - linux: [${{ needs.prepare.outputs.BUILT_HASH }}....${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_MEDUSA }}/compare/${{ needs.prepare.outputs.BUILT_HASH }}...${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID }})
+              - windows: [${{ needs.prepare.outputs.BUILT_HASH }}....${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_MEDUSA }}/compare/${{ needs.prepare.outputs.BUILT_HASH }}...${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }})
 
