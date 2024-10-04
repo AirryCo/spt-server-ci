@@ -34,6 +34,7 @@ jobs:
         id: get-latest-commit
         run: |
           SPT_SERVER_LATEST_COMMIT_HASH=$(git ls-remote ${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER }}.git refs/heads/${{ env.NIGHTLY_BRANCH }} | awk '{print $1}')
+          SPT_SERVER_LATEST_COMMIT_HASH=${SPT_SERVER_LATEST_COMMIT_HASH:0:8}
           echo "👽 SPT_SERVER_LATEST_COMMIT_HASH = $SPT_SERVER_LATEST_COMMIT_HASH"
           echo "SPT_SERVER_LATEST_COMMIT_HASH=$SPT_SERVER_LATEST_COMMIT_HASH" >> $GITHUB_OUTPUT
         shell: bash
@@ -41,11 +42,11 @@ jobs:
         id: compare-hash
         run: |
           source trigger.nightly
-          server_last_build_hash=$server
+          server_last_built_hash=${server:0:8}
           server_latest_commit_hash=${{ steps.get-latest-commit.outputs.SPT_SERVER_LATEST_COMMIT_HASH }}
-          if [ "$server_last_build_hash" != "$server_latest_commit_hash" ]; then
+          if [ "$server_last_built_hash" != "$server_latest_commit_hash" ]; then
             echo "✅ There is different between last-built-hash and lastest-commit-hash, continue to build."
-            echo "BUILT_HASH=${server_last_build_hash:0:8}" >> $GITHUB_OUTPUT
+            echo "BUILT_HASH=$server_last_built_hash" >> $GITHUB_OUTPUT
             echo "PROCEED=true" >> $GITHUB_OUTPUT
           else
             echo "✋ last-built-hash and latest-commit-hash are the same, stop building."
@@ -445,7 +446,7 @@ jobs:
 
             Tarkov: ***${{ needs.prepare.outputs.EFT_VERSION }}***
 
-            [SPT/Server](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER }}) commit hash: [${{ needs.prepare.outputs.SPT_SERVER_COMMIT }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER }}/src/commit/${{ needs.prepare.outputs.SPT_SERVER_COMMIT }}), commit date: **${{ needs.build-server-linux.outputs.SPT_SERVER_COMMIT_TIME }}**
+            [SPT/Server](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER }}) commit hash: [${{ needs.prepare.outputs.SPT_SERVER_COMMIT }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER }}/src/commit/${{ needs.prepare.outputs.SPT_SERVER_COMMIT }}), commit time: **${{ needs.build-server-linux.outputs.SPT_SERVER_COMMIT_TIME }}**
 
             [medusa/spt-server](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_MEDUSA }}) commit:
               - linux: [${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_MEDUSA }}/src/commit/${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID }})
@@ -489,7 +490,7 @@ jobs:
 
             Tarkov: ***${{ needs.prepare.outputs.EFT_VERSION }}***
 
-            [SPT/Server](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER }}) commit hash: [${{ needs.prepare.outputs.SPT_SERVER_COMMIT }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER }}/src/commit/${{ needs.prepare.outputs.SPT_SERVER_COMMIT }}), commit date: **${{ needs.build-server-linux.outputs.SPT_SERVER_COMMIT_TIME }}**
+            [SPT/Server](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER }}) commit hash: [${{ needs.prepare.outputs.SPT_SERVER_COMMIT }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER }}/src/commit/${{ needs.prepare.outputs.SPT_SERVER_COMMIT }}), commit time: **${{ needs.build-server-linux.outputs.SPT_SERVER_COMMIT_TIME }}**
 
             [medusa/spt-server](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_MEDUSA }}) commit:
               - linux: [${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_MEDUSA }}/src/commit/${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID }})
