@@ -34,6 +34,8 @@ Docker Hub: https://hub.docker.com/r/stblog/spt-server
 
 Github Container Registry: https://github.com/AirryCo/spt-server-ci/pkgs/container/spt-server
 
+Aliyun Registry: registry.cn-shenzhen.aliyuncs.com/spt-server/spt-server
+
 1. use docker shell
 
 ```bash
