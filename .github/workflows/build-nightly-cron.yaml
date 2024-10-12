@@ -316,6 +316,7 @@ jobs:
           images: |
             ${{ env.DOCKERHUB_USER }}/${{ env.DOCKERHUB_REPOSITORY }}
             ghcr.io/${{ env.GHCR_USER }}/${{ env.GHCR_REPOSITORY }}
+            registry.cn-shenzhen.aliyuncs.com/spt-server/spt-server
           tags: |
             type=raw,value=nightly
       - name: Set up QEMU
@@ -336,6 +337,15 @@ jobs:
           registry: ghcr.io
           username: ${{ env.GHCR_USER }}
           password: ${{ secrets.GHCR_TOKEN }}
+
+      # Aliyun Registry
+      - name: Login to Aliyun Registry
+        uses: docker/login-action@v3
+        with:
+          registry: registry.cn-shenzhen.aliyuncs.com
+          username: ${{ secrets.ALIYUN_REGISTRY_USER }}
+          password: ${{ secrets.ALIYUN_REGISTRY_TOKEN }}
+
 
       - name: Build and Push
         id: build-and-push
