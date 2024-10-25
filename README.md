@@ -1,6 +1,6 @@
 # Single Player Tarkov - Server Project(community)
 
-This repository is for compiling the SPT server, not for source code. It automatically compiles the SPT code daily at midnight and pushes the compiled version to the releases. The compiled `.zip` file is intended for use with Windows. If you need the Linux version, please refer to the tutorial below.
+This repository is for compiling the SPT server, not for source code. It automatically compiles the SPT code daily at midnight and pushes the compiled version to the releases. 
 
 You can find the lanucher from [here](https://github.com/AirryCo/spt-launcher-ci/releases)
 
