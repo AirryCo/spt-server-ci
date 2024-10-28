@@ -2,7 +2,7 @@ name: SPT-Server Build Release
 
 on:
   schedule:
-    - cron: '0 */12 * * *'
+    - cron: '0 2 * * *'
   push:
     paths:
       - '.github/workflows/build-release-cron.yaml'

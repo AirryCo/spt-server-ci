@@ -2,7 +2,7 @@ name: SPT-Server Build Nightly
 
 on:
   schedule:
-    - cron: '15 */12 * * *'
+    - cron: '30 2 * * *'
   push:
     paths:
       - '.github/workflows/build-nightly-cron.yaml'
