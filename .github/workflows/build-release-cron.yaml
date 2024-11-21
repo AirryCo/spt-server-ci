@@ -125,8 +125,8 @@ jobs:
         run: |
           cd ${{ env.SOURCECODE_DIR }}
           git pull
-          git fetch -u ${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER }}.git ${{ needs.prepare.outputs.TARGET_TAG }}:SPT-${{ needs.prepare.outputs.TARGET_TAG }}
-          git merge -m "🤖 Merge tag \`${{ needs.prepare.outputs.TARGET_TAG }}\` from SPT" --no-ff SPT-${{ needs.prepare.outputs.TARGET_TAG }}
+          git fetch -u ${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER }}.git ${{ RELEASE_BRANCH }}:SPT-${{ RELEASE_BRANCH }}
+          git merge -m "🤖 Merge tag \`${{ needs.prepare.outputs.TARGET_TAG }}\` from SPT" --no-ff ${{ needs.prepare.outputs.TARGET_TAG }}
         shell: bash
 
       - name: Runner Debug Information
@@ -239,8 +239,8 @@ jobs:
         run: |
           cd ${{ env.SOURCECODE_DIR }}
           git pull
-          git fetch -u ${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER }}.git ${{ needs.prepare.outputs.TARGET_TAG }}:SPT-${{ needs.prepare.outputs.TARGET_TAG }}
-          git merge -m "🤖 Merge tag \`${{ needs.prepare.outputs.TARGET_TAG }}\` from SPT" --no-ff SPT-${{ needs.prepare.outputs.TARGET_TAG }}
+          git fetch -u ${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER }}.git ${{ RELEASE_BRANCH }}:SPT-${{ RELEASE_BRANCH }}
+          git merge -m "🤖 Merge tag \`${{ needs.prepare.outputs.TARGET_TAG }}\` from SPT" --no-ff ${{ needs.prepare.outputs.TARGET_TAG }}
         shell: bash
 
       - name: Runner Debug Information
@@ -397,6 +397,7 @@ jobs:
           git push
           git tag -d ${{ needs.prepare.outputs.TARGET_TAG }}
           git tag ${{ needs.prepare.outputs.TARGET_TAG }}
+          git push -u origin ${{ RELEASE_BRANCH }}
           git push -u origin ${{ needs.prepare.outputs.TARGET_TAG }}
         shell: bash
 
