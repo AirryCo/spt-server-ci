@@ -36,6 +36,13 @@ Github Container Registry: https://github.com/AirryCo/spt-server-ci/pkgs/contain
 
 Aliyun Registry: registry.cn-shenzhen.aliyuncs.com/spt-server/spt-server
 
+> [!NOTE]
+> ***Mods using***: please replace all instances of the string "/snapshot/project" in the mod folder with "/snapshot/workspace/medusa/spt-server/code/project" before running.(**version 3.9 only**，No changes required for version 3.10)
+> 
+> You can run the commond `sed -i "s/\/snapshot\/workspace\/project/\/snapshot\/workspace\/medusa\/spt-server\/code\/project/g" $(grep -rl "/snapshot/workspace" .)` to replace all.
+
+### 3.10
+
 1. use docker shell
 
 ```bash
@@ -63,3 +70,24 @@ services:
 `backendIp`(optional): Your server IP, default is your container IP like `172.17.0.2`. If `network_mode` is set to `host`, it will be your server IP by default
 
 `backendPort`(optional): Your server port, default is `6969`
+
+### 3.9
+
+```bash
+docker run -d --name spt-server --restart always -p 6969:6969 -v ./spt-server:/opt/spt-server stblog/spt-server:3.9
+```
+
+docker compose
+```yaml
+services:
+  spt-server:
+    image: stblog/spt-server
+    container_name: spt-server
+    restart: always
+    volumes:
+      - './spt-server:/opt/spt-server'
+    ports:
+      - '6969:6969'
+```
+
+You need to modify the value of `backendIp` to your server IP in `SPT_Data/Server/configs/http.json`
