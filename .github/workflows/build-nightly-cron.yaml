@@ -501,7 +501,7 @@ jobs:
         shell: bash
 
   update-trigger-and-push:
-    needs: [prepare, build-fika-server]
+    needs: [prepare, build-server-windows, build-server-linux]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
