@@ -536,7 +536,7 @@ jobs:
           fika=${{ needs.prepare.outputs.FIKA_SERVER_COMMIT }}
           echo "fika=$fika" > trigger.fika
           git add trigger.nightly trigger.fika
-          git commit -m "🤖 up to spt-server: \`$server\`, fika-server:\`$fika\`."
+          git commit -m "🤖 up to spt-server: \`$server\`, fika-server: \`${fika:0:8}\`."
           REMOTE_URL="https://medusa:${{ secrets.GIT_PUSH_TO_SPT }}@dev.sp-tarkov.com/${{ env.REPOSITORY_SPT_SERVER_CI }}.git"
           git remote set-url origin "$REMOTE_URL"
           git push
@@ -598,6 +598,12 @@ jobs:
           zip -r ../${{ needs.build-server-linux.outputs.LINUX_RELEASE_FIKA_FILE }} *
           ls -R ..
 
+      - name: Short Hash
+        id: short-hash
+        run: |
+          fika_hash=${{ needs.prepare.outputs.FIKA_SERVER_COMMIT }}
+          echo "FIKA_HASH=${fika_hash:0:8}" >> $GITHUB_OUTPUT
+
       - name: Create Github Pre-release
         uses: softprops/action-gh-release@v2
         with:
@@ -615,7 +621,7 @@ jobs:
               - linux: [${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_MEDUSA }}/src/commit/${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID }})
               - windows: [${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_MEDUSA }}/src/commit/${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }})
 
-            Fika-Server: ***${{ needs.prepare.outputs.FIKA_SERVER_COMMIT }}***
+            Fika-Server: [${{ steps.short-hash.outputs.FIKA_HASH }}](https://github.com/project-fika/Fika-Server/tree/${{ needs.prepare.outputs.FIKA_SERVER_COMMIT }})
 
             Build time: ***${{ needs.prepare.outputs.BUILD_DATE_TIME }}***
 
@@ -636,7 +642,7 @@ jobs:
             Full Changelog:
               - linux: [${{ needs.prepare.outputs.BUILT_HASH }}...${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_MEDUSA }}/compare/${{ needs.prepare.outputs.BUILT_HASH }}...${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID }})
               - windows: [${{ needs.prepare.outputs.BUILT_HASH }}...${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_MEDUSA }}/compare/${{ needs.prepare.outputs.BUILT_HASH }}...${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }})
-              - fika-server: [${{ needs.prepare.outputs.BUILT_HASH_FIKA }}...${{ needs.prepare.outputs.FIKA_SERVER_COMMIT }}](https://github.com/project-fika/Fika-Server/compare/${{ needs.prepare.outputs.BUILT_HASH_FIKA }}...${{ needs.prepare.outputs.FIKA_SERVER_COMMIT }})
+              - fika-server: [${{ needs.prepare.outputs.BUILT_HASH_FIKA }}...${{ steps.short-hash.outputs.FIKA_HASH }}](https://github.com/project-fika/Fika-Server/compare/${{ needs.prepare.outputs.BUILT_HASH_FIKA }}...${{ steps.short-hash.outputs.FIKA_HASH }})
 
           files: |
             ${{ needs.build-server-windows.outputs.WIN_RELEASE_FILE }}
@@ -664,7 +670,7 @@ jobs:
               - linux: [${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_MEDUSA }}/src/commit/${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID }})
               - windows: [${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_MEDUSA }}/src/commit/${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }})
 
-            Fika-Server: ***${{ needs.prepare.outputs.FIKA_SERVER_COMMIT }}***
+            Fika-Server: [${{ steps.short-hash.outputs.FIKA_HASH }}](https://github.com/project-fika/Fika-Server/tree/${{ needs.prepare.outputs.FIKA_SERVER_COMMIT }})
 
             Build time: ***${{ needs.prepare.outputs.BUILD_DATE_TIME }}***
 
@@ -687,5 +693,5 @@ jobs:
             Full Changelog:
               - linux: [${{ needs.prepare.outputs.BUILT_HASH }}....${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_MEDUSA }}/compare/${{ needs.prepare.outputs.BUILT_HASH }}...${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID }})
               - windows: [${{ needs.prepare.outputs.BUILT_HASH }}....${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_MEDUSA }}/compare/${{ needs.prepare.outputs.BUILT_HASH }}...${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }})
-              - fika-server: [${{ needs.prepare.outputs.BUILT_HASH_FIKA }}...${{ needs.prepare.outputs.FIKA_SERVER_COMMIT }}](https://github.com/project-fika/Fika-Server/compare/${{ needs.prepare.outputs.BUILT_HASH_FIKA }}...${{ needs.prepare.outputs.FIKA_SERVER_COMMIT }})
+              - fika-server: [${{ needs.prepare.outputs.BUILT_HASH_FIKA }}...${{ steps.short-hash.outputs.FIKA_HASH }}](https://github.com/project-fika/Fika-Server/compare/${{ needs.prepare.outputs.BUILT_HASH_FIKA }}...${{ steps.short-hash.outputs.FIKA_HASH }})
 
