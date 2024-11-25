@@ -13,16 +13,20 @@ env:
   REPOSITORY_SPT_SERVER_MEDUSA: medusa/spt-server
   REPOSITORY_SPT_SERVER_CI: medusa/spt-server-ci
   NIGHTLY_BRANCH: 3.10.0-DEV
+  NIGHTLY_BRANCH_FIKA: spt-3.10
 
 jobs:
   prepare:
     runs-on: ubuntu-latest
     outputs:
       PROCEED: ${{ steps.compare-hash.outputs.PROCEED }}
+      PROCEED_FIKA: ${{ steps.compare-fika.outputs.PROCEED }}
       BUILT_HASH: ${{ steps.compare-hash.outputs.BUILT_HASH }}
+      BUILT_HASH_FIKA: ${{ steps.compare-fika.outputs.BUILT_HASH }}
       SPT_VERSION: ${{ steps.versions.outputs.SPT_VERSION }}
       EFT_VERSION: ${{ steps.versions.outputs.EFT_VERSION }}
       SPT_SERVER_COMMIT: ${{ steps.versions.outputs.SPT_SERVER_COMMIT }}
+      FIKA_SERVER_COMMIT: ${{ steps.compare-fika.outputs.FIKA_SERVER_COMMIT }}
       BUILD_DATE_TIME: ${{ steps.versions.outputs.DATE_TIME }}
 
     steps:
@@ -46,16 +50,34 @@ jobs:
           server_latest_commit_hash=${{ steps.get-latest-commit.outputs.SPT_SERVER_LATEST_COMMIT_HASH }}
           if [ "$server_last_built_hash" != "$server_latest_commit_hash" ]; then
             echo "✅ There is different between last-built-hash and lastest-commit-hash, continue to build."
-            echo "BUILT_HASH=$server_last_built_hash" >> $GITHUB_OUTPUT
             echo "PROCEED=true" >> $GITHUB_OUTPUT
           else
-            echo "✋ last-built-hash and latest-commit-hash are the same, stop building."
             echo "PROCEED=false" >> $GITHUB_OUTPUT
           fi
+          echo "BUILT_HASH=$server_last_built_hash" >> $GITHUB_OUTPUT
         shell: bash
+      - name: Compare Fika Hashes
+        id: compare-fika
+        run: |
+          source trigger.fika
+          fika_last_built_hash=${fika:0:8}
+          fika_latest_commit_hash=$(git ls-remote https://github.com/project-fika/Fika-Server.git refs/heads/${{ env.NIGHTLY_BRANCH_FIKA }} | awk '{print $1}')
+          if [ "$fika_last_built_hash" != "$fika_latest_commit_hash" ]; then
+            if [ ${{ steps.compare-hash.outputs.PROCEED }} == 'false' ]; then
+              echo "✅ There is different between fika-built-hash and fika-commit-hash, continue to build."
+            fi
+            echo "PROCEED=true" >> $GITHUB_OUTPUT
+          else
+            if [ ${{ steps.compare-hash.outputs.PROCEED }} == 'false' ]; then
+              echo "✋ last-built-hash and latest-commit-hash are the same, stop building."
+            fi
+            echo "PROCEED=false" >> $GITHUB_OUTPUT
+          fi
+          echo "BUILT_HASH=$fika_last_built_hash" >> $GITHUB_OUTPUT
+          echo "FIKA_SERVER_COMMIT=$fika_latest_commit_hash" >> $GITHUB_OUTPUT
       - name: Extract versions
         id: versions
-        if: steps.compare-hash.outputs.PROCEED == 'true'
+        if: steps.compare-hash.outputs.PROCEED == 'true' || steps.compare-fika.outputs.PROCEED == 'true'
         run: |
           SPT_SERVER_COMMIT=${{ steps.get-latest-commit.outputs.SPT_SERVER_LATEST_COMMIT_HASH }}
 
@@ -73,9 +95,76 @@ jobs:
           echo "DATE_TIME=$(date +%Y%m%d%H%M%S)" >> $GITHUB_OUTPUT
         shell: bash
 
+  build-fika-server:
+    needs: prepare
+    if: needs.prepare.outputs.PROCEED == 'true' || needs.prepare.outputs.PROCEED_FIKA == 'true'
+    runs-on: ubuntu-latest
+    env:
+      SOURCECODE_DIR: ${{ github.workspace }}/fika-server
+
+    outputs:
+      FIKA_ARTIFACT: ${{ steps.filename.outputs.FIKA_ARTIFACT }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Clone Fika Server Code
+        run: |
+          git clone -b ${{ env.NIGHTLY_BRANCH_FIKA }} https://github.com/project-fika/Fika-Server.git ${{ env.SOURCECODE_DIR }}
+        shell: bash
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.11.1
+
+      - name: Cache NPM Dependencies
+        id: cache-npm-dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ${{ env.SOURCECODE_DIR }}/node_modules
+          key: ${{ runner.os }}-npm-dependencies-fika-${{ hashFiles('package.json') }}
+          restore-keys: |
+            ${{ runner.os }}-npm-dependencies-fika-
+
+      - name: Install NPM Dependencies
+        if: steps.cache-npm-dependencies.outputs.cache-hit != 'true'
+        run: |
+          cd ${{ env.SOURCECODE_DIR }}
+          npm install
+        shell: pwsh
+
+      - name: Build Fika Server
+        id: build-server
+        run: |
+          cd ${{ env.SOURCECODE_DIR }}
+          npm run build
+          mkdir output
+          cd output
+          unzip ../dist/fika-server.zip
+        shell: bash
+
+      - name: Generate Artifact File Name
+        id: filename
+        run: |
+          artifact_name=Fika-Server-nightly-${{ needs.prepare.outputs.FIKA_SERVER_COMMIT }}-artifact
+          echo "FIKA_ARTIFACT=$artifact_name" >> $GITHUB_OUTPUT
+        shell: bash
+
+      - name: Artifact Fika Server
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.filename.outputs.FIKA_ARTIFACT }}
+          path: ${{ env.SOURCECODE_DIR }}/output
+          overwrite: true
+
   build-server-windows:
     needs: prepare
-    if: ${{ needs.prepare.outputs.PROCEED == 'true' }}
+    if: needs.prepare.outputs.PROCEED == 'true' || needs.prepare.outputs.PROCEED_FIKA == 'true'
     runs-on: windows-latest
     env:
       OUTPUT_DIR: spt-server
@@ -85,6 +174,7 @@ jobs:
       WIN_COMMIT_ID: ${{ steps.debug-info.outputs.COMMIT_ID }}
       WIN_ARTIFACT: ${{ steps.filename.outputs.WIN_ARTIFACT }}
       WIN_RELEASE_FILE: ${{ steps.filename.outputs.WIN_RELEASE }}
+      WIN_RELEASE_FIKA_FILE: ${{ steps.filename.outputs.WIN_RELEASE_FIKA }}
 
     steps:
       - name: Checkout
@@ -165,9 +255,10 @@ jobs:
         id: filename
         run: |
           artifact_name=${{ env.OUTPUT_DIR }}-${{ needs.prepare.outputs.SPT_VERSION }}-win-nightly-${{ steps.debug-info.outputs.COMMIT_ID }}-EFT${{ needs.prepare.outputs.EFT_VERSION }}-${{ needs.prepare.outputs.BUILD_DATE_TIME }}-artifact
-          release_name=${{ env.OUTPUT_DIR }}-${{ needs.prepare.outputs.SPT_VERSION }}-win-nightly-${{ steps.debug-info.outputs.COMMIT_ID }}-EFT${{ needs.prepare.outputs.EFT_VERSION }}-${{ needs.prepare.outputs.BUILD_DATE_TIME }}.zip
+          release_name=${{ env.OUTPUT_DIR }}-${{ needs.prepare.outputs.SPT_VERSION }}-win-nightly-${{ steps.debug-info.outputs.COMMIT_ID }}-EFT${{ needs.prepare.outputs.EFT_VERSION }}-${{ needs.prepare.outputs.BUILD_DATE_TIME }}
           echo "WIN_ARTIFACT=$artifact_name" >> $GITHUB_OUTPUT
-          echo "WIN_RELEASE=$release_name" >> $GITHUB_OUTPUT
+          echo "WIN_RELEASE=$release_name.zip" >> $GITHUB_OUTPUT
+          echo "WIN_RELEASE_FIKA=$release_name-fika.zip" >> $GITHUB_OUTPUT
         shell: bash
 
       - name: Artifact Winodws Server
@@ -187,8 +278,8 @@ jobs:
         shell: bash
 
   build-server-linux:
-    needs: prepare
-    if: ${{ needs.prepare.outputs.PROCEED == 'true' }}
+    needs: [prepare, build-fika-server]
+    if: needs.prepare.outputs.PROCEED == 'true' || needs.prepare.outputs.PROCEED_FIKA == 'true'
     runs-on: ubuntu-latest
     env:
       OUTPUT_DIR: spt-server
@@ -206,6 +297,7 @@ jobs:
       LINUX_COMMIT_ID: ${{ steps.debug-info.outputs.COMMIT_ID }}
       LINUX_ARTIFACT: ${{ steps.filename.outputs.LINUX_ARTIFACT }}
       LINUX_RELEASE_FILE: ${{ steps.filename.outputs.LINUX_RELEASE }}
+      LINUX_RELEASE_FIKA_FILE: ${{ steps.filename.outputs.LINUX_RELEASE_FIKA }}
       DOCKER_DIGEST: ${{ steps.build-and-push.outputs.digest }}
       DOCKER_IMAGEID: ${{ steps.build-and-push.outputs.imageid }}
 
@@ -289,9 +381,10 @@ jobs:
         id: filename
         run: |
           artifact_name=${{ env.OUTPUT_DIR }}-${{ needs.prepare.outputs.SPT_VERSION }}-linux-nightly-${{ steps.debug-info.outputs.COMMIT_ID }}-EFT${{ needs.prepare.outputs.EFT_VERSION }}-${{ needs.prepare.outputs.BUILD_DATE_TIME }}-artifact
-          release_name=${{ env.OUTPUT_DIR }}-${{ needs.prepare.outputs.SPT_VERSION }}-linux-nightly-${{ steps.debug-info.outputs.COMMIT_ID }}-EFT${{ needs.prepare.outputs.EFT_VERSION }}-${{ needs.prepare.outputs.BUILD_DATE_TIME }}.zip
+          release_name=${{ env.OUTPUT_DIR }}-${{ needs.prepare.outputs.SPT_VERSION }}-linux-nightly-${{ steps.debug-info.outputs.COMMIT_ID }}-EFT${{ needs.prepare.outputs.EFT_VERSION }}-${{ needs.prepare.outputs.BUILD_DATE_TIME }}
           echo "LINUX_ARTIFACT=$artifact_name" >> $GITHUB_OUTPUT
-          echo "LINUX_RELEASE=$release_name" >> $GITHUB_OUTPUT
+          echo "LINUX_RELEASE=$release_name.zip" >> $GITHUB_OUTPUT
+          echo "LINUX_RELEASE_FIKA=$release_name-fika.zip" >> $GITHUB_OUTPUT
         shell: bash
 
       - name: Artifact Linux Server
@@ -300,13 +393,28 @@ jobs:
           name: ${{ steps.filename.outputs.LINUX_ARTIFACT }}
           path: ${{ env.SOURCECODE_DIR }}/project/${{ env.OUTPUT_DIR }}
           overwrite: true
+          retention-days: 1
 
       # docker
-      - name: Move .tgz to docker dir
+      - name: Compress spt-server to docker dir
         run: |
           cd ${{ env.SOURCECODE_DIR }}/project
           tar -czf ../docker/spt-server.tgz ${{ env.OUTPUT_DIR }}
+          cp ../docker/spt-server.tgz ../docker/WithFika/spt-server.tgz
           ls -l ../docker
+        shell: bash
+
+      - name: Download Fika Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.build-fika-server.outputs.FIKA_ARTIFACT }}
+          path: fika
+
+      - name: Compress fika-server to docker dir
+        run: |
+          cd fika
+          tar -czf ../docker/WithFika/fika-server.tgz .
+          ls -l ../docker/WithFika
         shell: bash
 
       - name: Extract metadata for Docker
@@ -319,6 +427,17 @@ jobs:
             registry.cn-shenzhen.aliyuncs.com/spt-server/spt-server
           tags: |
             type=raw,value=nightly
+      - name: Extract metadata for Docker with Fika-Server
+        id: meta-fika
+        uses: docker/metadata-action@v5
+        with:
+          images: |
+            ${{ env.DOCKERHUB_USER }}/${{ env.DOCKERHUB_REPOSITORY }}
+            ghcr.io/${{ env.GHCR_USER }}/${{ env.GHCR_REPOSITORY }}
+            registry.cn-shenzhen.aliyuncs.com/spt-server/spt-server
+          tags: |
+            type=raw,value=nightly-fika
+
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
       - name: Set up Docker Buildx
@@ -337,7 +456,6 @@ jobs:
           registry: ghcr.io
           username: ${{ env.GHCR_USER }}
           password: ${{ secrets.GHCR_TOKEN }}
-
       # Aliyun Registry
       - name: Login to Aliyun Registry
         uses: docker/login-action@v3
@@ -346,7 +464,6 @@ jobs:
           username: ${{ secrets.ALIYUN_REGISTRY_USER }}
           password: ${{ secrets.ALIYUN_REGISTRY_TOKEN }}
 
-
       - name: Build and Push
         id: build-and-push
         uses: docker/build-push-action@v6
@@ -354,6 +471,19 @@ jobs:
           context: ${{ env.SOURCECODE_DIR }}/docker
           push: true
           tags: ${{ steps.meta.outputs.tags }}
+          labels: |
+            ${{ steps.meta.outputs.labels }}
+            org.opencontainers.image.source=https://dev.sp-tarkov.com/medusa/spt-server
+            org.opencontainers.image.url=https://dev.sp-tarkov.com/medusa/spt-server
+            org.opencontainers.image.revision=${{ steps.debug-info.outputs.COMMIT_ID_WHOLE }}
+          platforms: linux/amd64
+      - name: Build and Push with Fika Server
+        id: build-and-push-with-fika
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ env.SOURCECODE_DIR }}/docker/WithFika
+          push: true
+          tags: ${{ steps.meta-fika.outputs.tags }}
           labels: |
             ${{ steps.meta.outputs.labels }}
             org.opencontainers.image.source=https://dev.sp-tarkov.com/medusa/spt-server
@@ -371,7 +501,7 @@ jobs:
         shell: bash
 
   update-trigger-and-push:
-    needs: [prepare, build-server-windows, build-server-linux]
+    needs: [prepare, build-fika-server]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -386,8 +516,11 @@ jobs:
           rm trigger.nightly
           server=${{ needs.prepare.outputs.SPT_SERVER_COMMIT }}
           echo "server=$server" > trigger.nightly
-          git add trigger.nightly
-          git commit -m "🤖 up to \`$server\`."
+          rm trigger.fika
+          fika=${{ needs.prepare.outputs.FIKA_SERVER_COMMIT }}
+          echo "fika=$fika" > trigger.fika
+          git add trigger.nightly trigger.fika
+          git commit -m "🤖 up to spt-server: \`$server\`, fika-server:\`$fika\`."
           git push
         shell: bash
       - name: Update trigger and Push to SP-Tarkov
@@ -399,15 +532,18 @@ jobs:
           rm trigger.nightly
           server=${{ needs.prepare.outputs.SPT_SERVER_COMMIT }}
           echo "server=$server" > trigger.nightly
-          git add trigger.nightly
-          git commit -m "🤖 up to \`$server\`."
+          rm trigger.fika
+          fika=${{ needs.prepare.outputs.FIKA_SERVER_COMMIT }}
+          echo "fika=$fika" > trigger.fika
+          git add trigger.nightly trigger.fika
+          git commit -m "🤖 up to spt-server: \`$server\`, fika-server:\`$fika\`."
           REMOTE_URL="https://medusa:${{ secrets.GIT_PUSH_TO_SPT }}@dev.sp-tarkov.com/${{ env.REPOSITORY_SPT_SERVER_CI }}.git"
           git remote set-url origin "$REMOTE_URL"
           git push
         shell: bash
 
   assemble-and-publish:
-    needs: [prepare, build-server-windows, build-server-linux, update-trigger-and-push]
+    needs: [prepare, build-server-windows, build-server-linux, build-fika-server, update-trigger-and-push]
     runs-on: ubuntu-latest
 
     steps:
@@ -428,6 +564,12 @@ jobs:
           name: ${{ needs.build-server-linux.outputs.LINUX_ARTIFACT }}
           path: linux
 
+      - name: Download Fika Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.build-fika-server.outputs.FIKA_ARTIFACT }}
+          path: fika
+
       - name: List Release Contents
         run: |
           ls -R windows
@@ -444,6 +586,17 @@ jobs:
           zip -r ../${{ needs.build-server-linux.outputs.LINUX_RELEASE_FILE }} *
           ls -R ..
         shell: bash
+
+      - name: Compress Releases With Fika
+        id: compress-release-fika
+        run: |
+          cd windows
+          cp -rf ../fika/* .
+          zip -r ../${{ needs.build-server-windows.outputs.WIN_RELEASE_FIKA_FILE }} *
+          cd ../linux
+          cp -rf ../fika/* .
+          zip -r ../${{ needs.build-server-linux.outputs.LINUX_RELEASE_FIKA_FILE }} *
+          ls -R ..
 
       - name: Create Github Pre-release
         uses: softprops/action-gh-release@v2
@@ -462,6 +615,8 @@ jobs:
               - linux: [${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_MEDUSA }}/src/commit/${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID }})
               - windows: [${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_MEDUSA }}/src/commit/${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }})
 
+            Fika-Server: ***${{ needs.prepare.outputs.FIKA_SERVER_COMMIT }}***
+
             Build time: ***${{ needs.prepare.outputs.BUILD_DATE_TIME }}***
 
             **Docker Supported For linux/amd64**:
@@ -479,12 +634,15 @@ jobs:
             > After downloading, please use extraction software like WinRAR or [7-Zip](https://www.7-zip.org/) to unzip the files, then copy them to the Tarkov root directory. Do not use Windows File Explorer to directly open and copy the files.
 
             Full Changelog:
-              - linux: [${{ needs.prepare.outputs.BUILT_HASH }}....${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_MEDUSA }}/compare/${{ needs.prepare.outputs.BUILT_HASH }}...${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID }})
-              - windows: [${{ needs.prepare.outputs.BUILT_HASH }}....${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_MEDUSA }}/compare/${{ needs.prepare.outputs.BUILT_HASH }}...${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }})
+              - linux: [${{ needs.prepare.outputs.BUILT_HASH }}...${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_MEDUSA }}/compare/${{ needs.prepare.outputs.BUILT_HASH }}...${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID }})
+              - windows: [${{ needs.prepare.outputs.BUILT_HASH }}...${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_MEDUSA }}/compare/${{ needs.prepare.outputs.BUILT_HASH }}...${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }})
+              - fika-server: [${{ needs.prepare.outputs.BUILT_HASH_FIKA }}...${{ needs.prepare.outputs.FIKA_SERVER_COMMIT }}](https://github.com/project-fika/Fika-Server/compare/${{ needs.prepare.outputs.BUILT_HASH_FIKA }}...${{ needs.prepare.outputs.FIKA_SERVER_COMMIT }})
 
           files: |
             ${{ needs.build-server-windows.outputs.WIN_RELEASE_FILE }}
             ${{ needs.build-server-linux.outputs.LINUX_RELEASE_FILE }}
+            ${{ needs.build-server-windows.outputs.WIN_RELEASE_FIKA_FILE }}
+            ${{ needs.build-server-linux.outputs.LINUX_RELEASE_FIKA_FILE }}
 
       - name: Create Gitea Pre-release
         uses: akkuman/gitea-release-action@v1
@@ -505,6 +663,8 @@ jobs:
             [medusa/spt-server](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_MEDUSA }}) commit:
               - linux: [${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_MEDUSA }}/src/commit/${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID }})
               - windows: [${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_MEDUSA }}/src/commit/${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }})
+
+            Fika-Server: ***${{ needs.prepare.outputs.FIKA_SERVER_COMMIT }}***
 
             Build time: ***${{ needs.prepare.outputs.BUILD_DATE_TIME }}***
 
@@ -527,4 +687,5 @@ jobs:
             Full Changelog:
               - linux: [${{ needs.prepare.outputs.BUILT_HASH }}....${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_MEDUSA }}/compare/${{ needs.prepare.outputs.BUILT_HASH }}...${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID }})
               - windows: [${{ needs.prepare.outputs.BUILT_HASH }}....${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_MEDUSA }}/compare/${{ needs.prepare.outputs.BUILT_HASH }}...${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }})
+              - fika-server: [${{ needs.prepare.outputs.BUILT_HASH_FIKA }}...${{ needs.prepare.outputs.FIKA_SERVER_COMMIT }}](https://github.com/project-fika/Fika-Server/compare/${{ needs.prepare.outputs.BUILT_HASH_FIKA }}...${{ needs.prepare.outputs.FIKA_SERVER_COMMIT }})
 
