@@ -400,7 +400,6 @@ jobs:
         run: |
           cd ${{ env.SOURCECODE_DIR }}/project
           tar -czf ../docker/spt-server.tgz ${{ env.OUTPUT_DIR }}
-          cp ../docker/spt-server.tgz ../docker/WithFika/spt-server.tgz
           ls -l ../docker
         shell: bash
 
@@ -413,8 +412,8 @@ jobs:
       - name: Compress fika-server to docker dir
         run: |
           cd fika
-          tar -czf ${{ env.SOURCECODE_DIR }}/docker/WithFika/fika-server.tgz .
-          ls -l ${{ env.SOURCECODE_DIR }}/docker/WithFika
+          tar -czf ${{ env.SOURCECODE_DIR }}/docker/fika-server.tgz .
+          ls -l ${{ env.SOURCECODE_DIR }}/docker
         shell: bash
 
       - name: Extract metadata for Docker
@@ -476,12 +475,13 @@ jobs:
             org.opencontainers.image.source=https://dev.sp-tarkov.com/medusa/spt-server
             org.opencontainers.image.url=https://dev.sp-tarkov.com/medusa/spt-server
             org.opencontainers.image.revision=${{ steps.debug-info.outputs.COMMIT_ID_WHOLE }}
-          platforms: linux/amd64
+          platforms: linux/amd64,linux/arm64
       - name: Build and Push with Fika Server
         id: build-and-push-with-fika
         uses: docker/build-push-action@v6
         with:
-          context: ${{ env.SOURCECODE_DIR }}/docker/WithFika
+          context: ${{ env.SOURCECODE_DIR }}/docker
+          file: ${{ env.SOURCECODE_DIR }}/docker/Dockerfile-fika
           push: true
           tags: ${{ steps.meta-fika.outputs.tags }}
           labels: |
@@ -489,7 +489,7 @@ jobs:
             org.opencontainers.image.source=https://dev.sp-tarkov.com/medusa/spt-server
             org.opencontainers.image.url=https://dev.sp-tarkov.com/medusa/spt-server
             org.opencontainers.image.revision=${{ steps.debug-info.outputs.COMMIT_ID_WHOLE }}
-          platforms: linux/amd64
+          platforms: linux/amd64,linux/arm64
 
       - name: Push Linux Server Code
         run: |
