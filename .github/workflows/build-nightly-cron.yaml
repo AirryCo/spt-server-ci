@@ -284,11 +284,6 @@ jobs:
       OUTPUT_DIR: spt-server
       SOURCECODE_DIR: ${{ github.workspace }}/code
 
-      DOCKERHUB_USER: stblog
-      DOCKERHUB_REPOSITORY: spt-server
-      GHCR_USER: airryco
-      GHCR_REPOSITORY: spt-server
-
     outputs:
       SPT_SERVER_COMMIT_TIME: ${{ steps.merge.outputs.SPT_SERVER_COMMIT_TIME }}
       LINUX_COMMIT_ID: ${{ steps.debug-info.outputs.COMMIT_ID }}
@@ -296,8 +291,6 @@ jobs:
       LINUX_ARTIFACT: ${{ steps.filename.outputs.LINUX_ARTIFACT }}
       LINUX_RELEASE_FILE: ${{ steps.filename.outputs.LINUX_RELEASE }}
       LINUX_RELEASE_FIKA_FILE: ${{ steps.filename.outputs.LINUX_RELEASE_FIKA }}
-      DOCKER_DIGEST: ${{ steps.build-and-push.outputs.digest }}
-      DOCKER_IMAGEID: ${{ steps.build-and-push.outputs.imageid }}
 
     steps:
       - name: Checkout
@@ -393,102 +386,6 @@ jobs:
           overwrite: true
           retention-days: 1
 
-      # docker
-      - name: Compress spt-server to docker dir
-        run: |
-          cd ${{ env.SOURCECODE_DIR }}/project
-          tar -czf ../docker/spt-server.tgz ${{ env.OUTPUT_DIR }}
-          ls -l ../docker
-        shell: bash
-
-      - name: Download Fika Artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: ${{ needs.build-fika-server.outputs.FIKA_ARTIFACT }}
-          path: fika
-
-      - name: Compress fika-server to docker dir
-        run: |
-          cd fika
-          tar -czf ${{ env.SOURCECODE_DIR }}/docker/FikaBuiltIn/fika-server.tgz .
-          cp ${{ env.SOURCECODE_DIR }}/docker/spt-server.tgz ${{ env.SOURCECODE_DIR }}/docker/FikaBuiltIn
-          ls -l ${{ env.SOURCECODE_DIR }}/docker/FikaBuiltIn
-        shell: bash
-
-      - name: Extract metadata for Docker
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: |
-            ${{ env.DOCKERHUB_USER }}/${{ env.DOCKERHUB_REPOSITORY }}
-            ghcr.io/${{ env.GHCR_USER }}/${{ env.GHCR_REPOSITORY }}
-            registry.cn-shenzhen.aliyuncs.com/spt-server/spt-server
-          tags: |
-            type=raw,value=nightly
-      - name: Extract metadata for Docker with Fika-Server
-        id: meta-fika
-        uses: docker/metadata-action@v5
-        with:
-          images: |
-            ${{ env.DOCKERHUB_USER }}/${{ env.DOCKERHUB_REPOSITORY }}
-            ghcr.io/${{ env.GHCR_USER }}/${{ env.GHCR_REPOSITORY }}
-            registry.cn-shenzhen.aliyuncs.com/spt-server/spt-server
-          tags: |
-            type=raw,value=nightly-fika
-
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      # DockerHub
-      - name: Login to Dockerhub
-        uses: docker/login-action@v3
-        with:
-          username: ${{ env.DOCKERHUB_USER }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-      # GitHub Container Registry
-      - name: Login to Github Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ env.GHCR_USER }}
-          password: ${{ secrets.GHCR_TOKEN }}
-      # Aliyun Registry
-      - name: Login to Aliyun Registry
-        uses: docker/login-action@v3
-        with:
-          registry: registry.cn-shenzhen.aliyuncs.com
-          username: ${{ secrets.ALIYUN_REGISTRY_USER }}
-          password: ${{ secrets.ALIYUN_REGISTRY_TOKEN }}
-
-      - name: Build and Push
-        id: build-and-push
-        uses: docker/build-push-action@v6
-        with:
-          context: ${{ env.SOURCECODE_DIR }}/docker
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: |
-            ${{ steps.meta.outputs.labels }}
-            org.opencontainers.image.source=https://github.com/AirryCo/spt-server
-            org.opencontainers.image.url=https://github.com/AirryCo/spt-server
-            org.opencontainers.image.revision=${{ steps.debug-info.outputs.COMMIT_ID_WHOLE }}
-          platforms: linux/amd64
-      - name: Build and Push with Fika Server
-        id: build-and-push-with-fika
-        uses: docker/build-push-action@v6
-        with:
-          context: ${{ env.SOURCECODE_DIR }}/docker/FikaBuiltIn
-          push: true
-          tags: ${{ steps.meta-fika.outputs.tags }}
-          labels: |
-            ${{ steps.meta-fika.outputs.labels }}
-            org.opencontainers.image.source=https://github.com/AirryCo/spt-server
-            org.opencontainers.image.url=https://github.com/AirryCo/spt-server
-            org.opencontainers.image.revision=${{ steps.debug-info.outputs.COMMIT_ID_WHOLE }}
-          platforms: linux/amd64
-
       - name: Push Linux Server Code
         run: |
           cd ${{ env.SOURCECODE_DIR }}
@@ -507,6 +404,10 @@ jobs:
       DOCKERHUB_REPOSITORY: spt-server
       GHCR_USER: airryco
       GHCR_REPOSITORY: spt-server
+
+    outputs:
+      DOCKER_DIGEST: ${{ steps.build-and-push.outputs.digest }}
+      DOCKER_IMAGEID: ${{ steps.build-and-push.outputs.imageid }}
 
     steps:
       - name: Checkout
@@ -572,7 +473,7 @@ jobs:
             org.opencontainers.image.source=https://github.com/AirryCo/spt-server
             org.opencontainers.image.url=https://github.com/AirryCo/spt-server
             org.opencontainers.image.revision=${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID_WHOLE }}
-          platforms: linux/arm64
+          platforms: linux,amd64,linux/arm64
       - name: Build and Push with Fika Server
         id: build-and-push-with-fika
         uses: docker/build-push-action@v6
@@ -586,7 +487,7 @@ jobs:
             org.opencontainers.image.source=https://github.com/AirryCo/spt-server
             org.opencontainers.image.url=https://github.com/AirryCo/spt-server
             org.opencontainers.image.revision=${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID_WHOLE }}
-          platforms: linux/arm64
+          platforms: linux,amd64,linux/arm64
 
   update-trigger-and-push:
     needs: [prepare, build-server-windows, build-docker-image-multi-arch]
@@ -613,7 +514,7 @@ jobs:
         shell: bash
 
   assemble-and-publish:
-    needs: [prepare, build-server-windows, build-server-linux, build-fika-server, update-trigger-and-push]
+    needs: [prepare, build-server-windows, build-server-linux, build-fika-server, build-docker-image-multi-arch, update-trigger-and-push]
     runs-on: ubuntu-latest
 
     steps:
@@ -695,9 +596,9 @@ jobs:
 
             **Docker Supported For linux/amd64 and linux/arm64**:
 
-            image id: `${{ needs.build-server-linux.outputs.DOCKER_IMAGEID }}`
+            image id: `${{ needs.build-docker-image-multi-arch.outputs.DOCKER_IMAGEID }}`
 
-            digest: `${{ needs.build-server-linux.outputs.DOCKER_DIGEST }}`
+            digest: `${{ needs.build-docker-image-multi-arch.outputs.DOCKER_DIGEST }}`
 
             ```bash
             docker pull stblog/spt-server:nightly
