@@ -26,7 +26,7 @@ You can find the lanucher from [here](https://github.com/AirryCo/spt-launcher-ci
 
 ### For linux
 
-repository: https://dev.sp-tarkov.com/medusa/spt-server
+repository: ~~https://dev.sp-tarkov.com/medusa/spt-server~~ https://github.com/AirryCo/spt-server
 
 ~~SPT Registry: https://dev.sp-tarkov.com/medusa/-/packages/container/spt-server/nightly~~
 
