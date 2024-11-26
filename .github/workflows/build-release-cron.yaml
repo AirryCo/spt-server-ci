@@ -8,9 +8,9 @@ on:
       - '.github/workflows/build-release-cron.yaml'
 
 env:
-  SERVER_URL: https://dev.sp-tarkov.com
-  REPOSITORY_SPT_SERVER: SPT/Server
-  REPOSITORY_SPT_SERVER_MEDUSA: medusa/spt-server
+  SERVER_URL: https://github.com
+  REPOSITORY_SPT_SERVER: sp-tarkov/server
+  REPOSITORY_SPT_SERVER_AIRRYCO: AirryCo/spt-server
   RELEASE_BRANCH: 3.10.0-DEV
 
 jobs:
@@ -111,7 +111,7 @@ jobs:
 
       - name: Clone Medusa's Windows Server Code
         run: |
-          git clone -b ${{ env.RELEASE_BRANCH }}_windows ${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_MEDUSA }} ${{ env.SOURCECODE_DIR }}
+          git clone -b ${{ env.RELEASE_BRANCH }}_Win ${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_AIRRYCO }} ${{ env.SOURCECODE_DIR }}
           cd ${{ env.SOURCECODE_DIR }}
           git lfs pull
         shell: bash
@@ -189,7 +189,7 @@ jobs:
         run: |
           cd ${{ env.SOURCECODE_DIR }}
           git pull
-          REMOTE_URL="https://medusa:${{ secrets.GIT_PUSH_TO_SPT }}@dev.sp-tarkov.com/${{ env.REPOSITORY_SPT_SERVER_MEDUSA }}.git"
+          REMOTE_URL="https://AirryCo:${{ secrets.AIRRYCO_TOKEN }}@dev.sp-tarkov.com/${{ env.REPOSITORY_SPT_SERVER_AIRRYCO }}.git"
           git remote set-url origin "$REMOTE_URL"
           git push
         shell: bash
@@ -202,8 +202,6 @@ jobs:
       OUTPUT_DIR: spt-server
       SOURCECODE_DIR: ${{ github.workspace }}/code
 
-      SPT_USER: medusa
-      SPT_REGISTRY: dev.sp-tarkov.com
       DOCKERHUB_USER: stblog
       DOCKERHUB_REPOSITORY: spt-server
       GHCR_USER: airryco
@@ -225,7 +223,7 @@ jobs:
 
       - name: Clone Medusa's Linux Server Code
         run: |
-          git clone -b ${{ env.RELEASE_BRANCH }} ${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_MEDUSA }} ${{ env.SOURCECODE_DIR }}
+          git clone -b ${{ env.RELEASE_BRANCH }} ${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_AIRRYCO }} ${{ env.SOURCECODE_DIR }}
           cd ${{ env.SOURCECODE_DIR }}
           git lfs pull
         shell: bash
@@ -369,8 +367,8 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: |
             ${{ steps.meta.outputs.labels }}
-            org.opencontainers.image.source=https://dev.sp-tarkov.com/medusa/spt-server
-            org.opencontainers.image.url=https://dev.sp-tarkov.com/medusa/spt-server
+            org.opencontainers.image.source=https://github.com/AirryCo/spt-server
+            org.opencontainers.image.url=https://github.com/AirryCo/spt-server
             org.opencontainers.image.revision=${{ steps.debug-info.outputs.COMMIT_ID_WHOLE }}
           platforms: linux/amd64
 
@@ -383,8 +381,8 @@ jobs:
           tags: ${{ steps.meta-latest.outputs.tags }}
           labels: |
             ${{ steps.meta-latest.outputs.labels }}
-            org.opencontainers.image.source=https://dev.sp-tarkov.com/medusa/spt-server
-            org.opencontainers.image.url=https://dev.sp-tarkov.com/medusa/spt-server
+            org.opencontainers.image.source=https://github.com/AirryCo/spt-server
+            org.opencontainers.image.url=https://github.com/AirryCo/spt-server
             org.opencontainers.image.revision=${{ steps.debug-info.outputs.COMMIT_ID_WHOLE }}
           platforms: linux/amd64
 
@@ -392,7 +390,7 @@ jobs:
         run: |
           cd ${{ env.SOURCECODE_DIR }}
           git pull
-          REMOTE_URL="https://medusa:${{ secrets.GIT_PUSH_TO_SPT }}@dev.sp-tarkov.com/${{ env.REPOSITORY_SPT_SERVER_MEDUSA }}.git"
+          REMOTE_URL="https://AirryCo:${{ secrets.AIRRYCO_TOKEN }}@dev.sp-tarkov.com/${{ env.REPOSITORY_SPT_SERVER_AIRRYCO }}.git"
           git remote set-url origin "$REMOTE_URL"
           git push
           git tag -d ${{ needs.prepare.outputs.TARGET_TAG }}
@@ -468,9 +466,9 @@ jobs:
 
             [SPT/Server](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER }}) commit hash: [${{ needs.prepare.outputs.SPT_SERVER_COMMIT }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER }}/src/commit/${{ needs.prepare.outputs.SPT_SERVER_COMMIT }}), commit time: **${{ needs.prepare.outputs.SPT_SERVER_COMMIT_TIME }}**
 
-            [medusa/spt-server](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_MEDUSA }}) commit:
-              - linux: [${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_MEDUSA }}/src/commit/${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID }})
-              - windows: [${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_MEDUSA }}/src/commit/${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }})
+            [medusa/spt-server](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_AIRRYCO }}) commit:
+              - linux: [${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_AIRRYCO }}/src/commit/${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID }})
+              - windows: [${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_AIRRYCO }}/src/commit/${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }})
 
             Build time: ***${{ needs.prepare.outputs.BUILD_DATE_TIME }}***
 
@@ -485,8 +483,8 @@ jobs:
             ```
 
             Full Changelog:
-              - linux: [${{ needs.prepare.outputs.BUILT_TAG }}....${{ needs.prepare.outputs.TARGET_TAG }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_MEDUSA }}/compare/${{ needs.prepare.outputs.BUILT_TAG }}...${{ needs.prepare.outputs.TARGET_TAG }})
-              - windows: [${{ needs.prepare.outputs.BUILT_TAG }}....${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_MEDUSA }}/compare/${{ needs.prepare.outputs.BUILT_TAG }}...${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }})
+              - linux: [${{ needs.prepare.outputs.BUILT_TAG }}....${{ needs.prepare.outputs.TARGET_TAG }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_AIRRYCO }}/compare/${{ needs.prepare.outputs.BUILT_TAG }}...${{ needs.prepare.outputs.TARGET_TAG }})
+              - windows: [${{ needs.prepare.outputs.BUILT_TAG }}....${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_AIRRYCO }}/compare/${{ needs.prepare.outputs.BUILT_TAG }}...${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }})
 
           files: |
             ${{ needs.build-server-windows.outputs.WIN_RELEASE_FILE }}
@@ -505,9 +503,9 @@ jobs:
 
             [SPT/Server](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER }}) commit hash: [${{ needs.prepare.outputs.SPT_SERVER_COMMIT }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER }}/src/commit/${{ needs.prepare.outputs.SPT_SERVER_COMMIT }}), commit time: **${{ needs.prepare.outputs.SPT_SERVER_COMMIT_TIME }}**
 
-            [medusa/spt-server](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_MEDUSA }}) commit:
-              - linux: [${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_MEDUSA }}/src/commit/${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID }})
-              - windows: [${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_MEDUSA }}/src/commit/${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }})
+            [medusa/spt-server](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_AIRRYCO }}) commit:
+              - linux: [${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_AIRRYCO }}/src/commit/${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID }})
+              - windows: [${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_AIRRYCO }}/src/commit/${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }})
 
             Tarkov: ***${{ needs.prepare.outputs.EFT_VERSION }}***
 
@@ -524,93 +522,9 @@ jobs:
             ```
 
             Full Changelog:
-              - linux: [${{ needs.prepare.outputs.BUILT_TAG }}....${{ needs.prepare.outputs.TARGET_TAG }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_MEDUSA }}/compare/${{ needs.prepare.outputs.BUILT_TAG }}...${{ needs.prepare.outputs.TARGET_TAG }})
-              - windows: [${{ needs.prepare.outputs.BUILT_TAG }}....${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_MEDUSA }}/compare/${{ needs.prepare.outputs.BUILT_TAG }}...${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }})
+              - linux: [${{ needs.prepare.outputs.BUILT_TAG }}....${{ needs.prepare.outputs.TARGET_TAG }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_AIRRYCO }}/compare/${{ needs.prepare.outputs.BUILT_TAG }}...${{ needs.prepare.outputs.TARGET_TAG }})
+              - windows: [${{ needs.prepare.outputs.BUILT_TAG }}....${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_AIRRYCO }}/compare/${{ needs.prepare.outputs.BUILT_TAG }}...${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }})
 
           files: |
             ${{ needs.build-server-windows.outputs.WIN_RELEASE_FILE }}
             ${{ needs.build-server-linux.outputs.LINUX_RELEASE_FILE }}
-
-
-      - name: Create Gitea Pre-release
-        id: create_gitea_pre_release
-        if: ${{ contains(needs.prepare.outputs.TARGET_TAG, 'BEM') }}
-        uses: akkuman/gitea-release-action@v1
-        with:
-          server_url: ${{ env.SERVER_URL }}
-          repository: ${{ env.REPOSITORY_SPT_SERVER_MEDUSA }}
-          token: ${{ secrets.GIT_PUSH_TO_SPT }}
-          name: ${{ needs.prepare.outputs.TARGET_TAG }}
-          tag_name: ${{ needs.prepare.outputs.TARGET_TAG }}
-          target_commitish: ${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID }}
-          prerelease: true
-          body: |
-            SPT: ***${{ needs.prepare.outputs.SPT_VERSION }}***
-
-            [SPT/Server](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER }}) commit hash: [${{ needs.prepare.outputs.SPT_SERVER_COMMIT }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER }}/src/commit/${{ needs.prepare.outputs.SPT_SERVER_COMMIT }}), commit time: **${{ needs.prepare.outputs.SPT_SERVER_COMMIT_TIME }}**
-
-            [medusa/spt-server](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_MEDUSA }}) commit:
-              - linux: [${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_MEDUSA }}/src/commit/${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID }})
-              - windows: [${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_MEDUSA }}/src/commit/${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }})
-
-            Tarkov: ***${{ needs.prepare.outputs.EFT_VERSION }}***
-
-            Build time: ***${{ needs.prepare.outputs.BUILD_DATE_TIME }}***
-
-            **Docker Supported For linux/amd64**:
-
-            ```bash
-            docker pull stblog/spt-server:${{ needs.prepare.outputs.TARGET_TAG }}
-            docker pull ghcr.io/airryco/spt-server:${{ needs.prepare.outputs.TARGET_TAG }}
-            ```
-
-            Download Page: ${{ github.server_url }}/${{ github.repository }}/releases/tag/${{ needs.prepare.outputs.TARGET_TAG }}
-
-            > [!WARNING]
-            > After downloading, please use extraction software like WinRAR or [7-Zip](https://www.7-zip.org/) to unzip the files, then copy them to the Tarkov root directory. Do not use Windows File Explorer to directly open and copy the files.
-
-            Full Changelog:
-              - linux: [${{ needs.prepare.outputs.BUILT_TAG }}....${{ needs.prepare.outputs.TARGET_TAG }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_MEDUSA }}/compare/${{ needs.prepare.outputs.BUILT_TAG }}...${{ needs.prepare.outputs.TARGET_TAG }})
-              - windows: [${{ needs.prepare.outputs.BUILT_TAG }}....${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_MEDUSA }}/compare/${{ needs.prepare.outputs.BUILT_TAG }}...${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }})
-
-      - name: Create Gitea Release
-        id: create_gitea_release
-        if: ${{ !contains(needs.prepare.outputs.TARGET_TAG, 'BEM') }}
-        uses: akkuman/gitea-release-action@v1
-        with:
-          server_url: ${{ env.SERVER_URL }}
-          repository: ${{ env.REPOSITORY_SPT_SERVER_MEDUSA }}
-          token: ${{ secrets.GIT_PUSH_TO_SPT }}
-          name: ${{ needs.prepare.outputs.TARGET_TAG }}
-          tag_name: ${{ needs.prepare.outputs.TARGET_TAG }}
-          target_commitish: ${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID }}
-          prerelease: false
-          body: |
-            SPT: ***${{ needs.prepare.outputs.SPT_VERSION }}***
-
-            [SPT/Server](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER }}) commit hash: [${{ needs.prepare.outputs.SPT_SERVER_COMMIT }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER }}/src/commit/${{ needs.prepare.outputs.SPT_SERVER_COMMIT }}), commit time: **${{ needs.prepare.outputs.SPT_SERVER_COMMIT_TIME }}**
-
-            [medusa/spt-server](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_MEDUSA }}) commit:
-              - linux: [${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_MEDUSA }}/src/commit/${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID }})
-              - windows: [${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_MEDUSA }}/src/commit/${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }})
-
-            Tarkov: ***${{ needs.prepare.outputs.EFT_VERSION }}***
-
-            Build time: ***${{ needs.prepare.outputs.BUILD_DATE_TIME }}***
-
-            **Docker Supported For linux/amd64**:
-
-            ```bash
-            docker pull stblog/spt-server:${{ needs.prepare.outputs.TARGET_TAG }}
-            docker pull ghcr.io/airryco/spt-server:${{ needs.prepare.outputs.TARGET_TAG }}
-            ```
-
-            Download Page: ${{ github.server_url }}/${{ github.repository }}/releases/tag/${{ needs.prepare.outputs.TARGET_TAG }}
-
-            > [!WARNING]
-            > After downloading, please use extraction software like WinRAR or [7-Zip](https://www.7-zip.org/) to unzip the files, then copy them to the Tarkov root directory. Do not use Windows File Explorer to directly open and copy the files.
-
-            Full Changelog:
-              - linux: [${{ needs.prepare.outputs.BUILT_TAG }}....${{ needs.prepare.outputs.TARGET_TAG }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_MEDUSA }}/compare/${{ needs.prepare.outputs.BUILT_TAG }}...${{ needs.prepare.outputs.TARGET_TAG }})
-              - windows: [${{ needs.prepare.outputs.BUILT_TAG }}....${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_MEDUSA }}/compare/${{ needs.prepare.outputs.BUILT_TAG }}...${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }})
-

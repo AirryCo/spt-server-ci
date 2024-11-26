@@ -8,10 +8,9 @@ on:
       - '.github/workflows/build-nightly-cron.yaml'
 
 env:
-  SERVER_URL: https://dev.sp-tarkov.com
-  REPOSITORY_SPT_SERVER: SPT/Server
-  REPOSITORY_SPT_SERVER_MEDUSA: medusa/spt-server
-  REPOSITORY_SPT_SERVER_CI: medusa/spt-server-ci
+  SERVER_URL: https://github.com
+  REPOSITORY_SPT_SERVER: sp-tarkov/server
+  REPOSITORY_SPT_SERVER_AIRRYCO: AirryCo/spt-server
   NIGHTLY_BRANCH: 3.10.0-DEV
   NIGHTLY_BRANCH_FIKA: spt-3.10
 
@@ -186,9 +185,9 @@ jobs:
           git config --global user.name "github-actions[bot]"
           git config --global user.email "bot@github.com"
 
-      - name: Clone Medusa's Windows Server Code
+      - name: Clone AirryCo's Windows Server Code
         run: |
-          git clone -b ${{ env.NIGHTLY_BRANCH }}_windows ${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_MEDUSA }} ${{ env.SOURCECODE_DIR }}
+          git clone -b ${{ env.NIGHTLY_BRANCH }}_Win ${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_AIRRYCO }} ${{ env.SOURCECODE_DIR }}
           cd ${{ env.SOURCECODE_DIR }}
           git lfs pull
         shell: bash
@@ -272,7 +271,7 @@ jobs:
         run: |
           cd ${{ env.SOURCECODE_DIR }}
           git pull
-          REMOTE_URL="https://medusa:${{ secrets.GIT_PUSH_TO_SPT }}@dev.sp-tarkov.com/${{ env.REPOSITORY_SPT_SERVER_MEDUSA }}.git"
+          REMOTE_URL="https://AirryCo:${{ secrets.AIRRYCO_TOKEN }}@github.com/${{ env.REPOSITORY_SPT_SERVER_AIRRYCO }}.git"
           git remote set-url origin "$REMOTE_URL"
           git push
         shell: bash
@@ -311,9 +310,9 @@ jobs:
           git config --global user.name "github-actions[bot]"
           git config --global user.email "bot@github.com"
 
-      - name: Clone Medusa's Linux Server Code
+      - name: Clone AirryCo's Linux Server Code
         run: |
-          git clone -b ${{ env.NIGHTLY_BRANCH }} ${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_MEDUSA }} ${{ env.SOURCECODE_DIR }}
+          git clone -b ${{ env.NIGHTLY_BRANCH }} ${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_AIRRYCO }} ${{ env.SOURCECODE_DIR }}
           cd ${{ env.SOURCECODE_DIR }}
           git lfs pull
         shell: bash
@@ -495,7 +494,7 @@ jobs:
         run: |
           cd ${{ env.SOURCECODE_DIR }}
           git pull
-          REMOTE_URL="https://medusa:${{ secrets.GIT_PUSH_TO_SPT }}@dev.sp-tarkov.com/${{ env.REPOSITORY_SPT_SERVER_MEDUSA }}.git"
+          REMOTE_URL="https://AirryCo:${{ secrets.AIRRYCO_TOKEN }}@dev.sp-tarkov.com/${{ env.REPOSITORY_SPT_SERVER_AIRRYCO }}.git"
           git remote set-url origin "$REMOTE_URL"
           git push
         shell: bash
@@ -521,24 +520,6 @@ jobs:
           echo "fika=$fika" > trigger.fika
           git add trigger.nightly trigger.fika
           git commit -m "🤖 up to spt-server: \`$server\`, fika-server:\`$fika\`."
-          git push
-        shell: bash
-      - name: Update trigger and Push to SP-Tarkov
-        run: |
-          git clone --depth=1 ${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_CI }}.git SP-Tarkov
-          cd SP-Tarkov
-          git config user.name "github-actions[bot]"
-          git config user.email "bot@stblog.com.cn"
-          rm trigger.nightly
-          server=${{ needs.prepare.outputs.SPT_SERVER_COMMIT }}
-          echo "server=$server" > trigger.nightly
-          rm trigger.fika
-          fika=${{ needs.prepare.outputs.FIKA_SERVER_COMMIT }}
-          echo "fika=$fika" > trigger.fika
-          git add trigger.nightly trigger.fika
-          git commit -m "🤖 up to spt-server: \`$server\`, fika-server: \`${fika:0:8}\`."
-          REMOTE_URL="https://medusa:${{ secrets.GIT_PUSH_TO_SPT }}@dev.sp-tarkov.com/${{ env.REPOSITORY_SPT_SERVER_CI }}.git"
-          git remote set-url origin "$REMOTE_URL"
           git push
         shell: bash
 
@@ -617,9 +598,9 @@ jobs:
 
             [SPT/Server](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER }}) commit hash: [${{ needs.prepare.outputs.SPT_SERVER_COMMIT }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER }}/src/commit/${{ needs.prepare.outputs.SPT_SERVER_COMMIT }}), commit time: **${{ needs.build-server-linux.outputs.SPT_SERVER_COMMIT_TIME }}**
 
-            [medusa/spt-server](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_MEDUSA }}) commit:
-              - linux: [${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_MEDUSA }}/src/commit/${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID }})
-              - windows: [${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_MEDUSA }}/src/commit/${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }})
+            [medusa/spt-server](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_AIRRYCO }}) commit:
+              - linux: [${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_AIRRYCO }}/src/commit/${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID }})
+              - windows: [${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_AIRRYCO }}/src/commit/${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }})
 
             Fika-Server: [${{ steps.short-hash.outputs.FIKA_HASH }}](https://github.com/project-fika/Fika-Server/tree/${{ needs.prepare.outputs.FIKA_SERVER_COMMIT }})
 
@@ -640,8 +621,8 @@ jobs:
             > After downloading, please use extraction software like WinRAR or [7-Zip](https://www.7-zip.org/) to unzip the files, then copy them to the Tarkov root directory. Do not use Windows File Explorer to directly open and copy the files.
 
             Full Changelog:
-              - linux: [${{ needs.prepare.outputs.BUILT_HASH }}...${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_MEDUSA }}/compare/${{ needs.prepare.outputs.BUILT_HASH }}...${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID }})
-              - windows: [${{ needs.prepare.outputs.BUILT_HASH }}...${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_MEDUSA }}/compare/${{ needs.prepare.outputs.BUILT_HASH }}...${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }})
+              - linux: [${{ needs.prepare.outputs.BUILT_HASH }}...${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_AIRRYCO }}/compare/${{ needs.prepare.outputs.BUILT_HASH }}...${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID }})
+              - windows: [${{ needs.prepare.outputs.BUILT_HASH }}...${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_AIRRYCO }}/compare/${{ needs.prepare.outputs.BUILT_HASH }}...${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }})
               - fika-server: [${{ needs.prepare.outputs.BUILT_HASH_FIKA }}...${{ steps.short-hash.outputs.FIKA_HASH }}](https://github.com/project-fika/Fika-Server/compare/${{ needs.prepare.outputs.BUILT_HASH_FIKA }}...${{ steps.short-hash.outputs.FIKA_HASH }})
 
           files: |
@@ -649,49 +630,3 @@ jobs:
             ${{ needs.build-server-linux.outputs.LINUX_RELEASE_FILE }}
             ${{ needs.build-server-windows.outputs.WIN_RELEASE_FIKA_FILE }}
             ${{ needs.build-server-linux.outputs.LINUX_RELEASE_FIKA_FILE }}
-
-      - name: Create Gitea Pre-release
-        uses: akkuman/gitea-release-action@v1
-        with:
-          server_url: ${{ env.SERVER_URL }}
-          repository: ${{ env.REPOSITORY_SPT_SERVER_CI }}
-          token: ${{ secrets.GIT_PUSH_TO_SPT }}
-          name: ${{ needs.prepare.outputs.BUILD_DATE_TIME }}
-          tag_name: ${{ needs.prepare.outputs.BUILD_DATE_TIME }}
-          prerelease: true
-          body: |
-            SPT: ***${{ needs.prepare.outputs.SPT_VERSION }}***
-
-            Tarkov: ***${{ needs.prepare.outputs.EFT_VERSION }}***
-
-            [SPT/Server](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER }}) commit hash: [${{ needs.prepare.outputs.SPT_SERVER_COMMIT }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER }}/src/commit/${{ needs.prepare.outputs.SPT_SERVER_COMMIT }}), commit time: **${{ needs.build-server-linux.outputs.SPT_SERVER_COMMIT_TIME }}**
-
-            [medusa/spt-server](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_MEDUSA }}) commit:
-              - linux: [${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_MEDUSA }}/src/commit/${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID }})
-              - windows: [${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_MEDUSA }}/src/commit/${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }})
-
-            Fika-Server: [${{ steps.short-hash.outputs.FIKA_HASH }}](https://github.com/project-fika/Fika-Server/tree/${{ needs.prepare.outputs.FIKA_SERVER_COMMIT }})
-
-            Build time: ***${{ needs.prepare.outputs.BUILD_DATE_TIME }}***
-
-            **Docker Supported For linux/amd64**:
-
-            image id: `${{ needs.build-server-linux.outputs.DOCKER_IMAGEID }}`
-
-            digest: `${{ needs.build-server-linux.outputs.DOCKER_DIGEST }}`
-
-            ```bash
-            docker pull stblog/spt-server:nightly
-            docker pull ghcr.io/airryco/spt-server:nightly
-            ```
-
-            Download Page: ${{ github.server_url }}/${{ github.repository }}/releases/tag/${{ needs.prepare.outputs.BUILD_DATE_TIME }}
-
-            > [!WARNING]
-            > After downloading, please use extraction software like WinRAR or [7-Zip](https://www.7-zip.org/) to unzip the files, then copy them to the Tarkov root directory. Do not use Windows File Explorer to directly open and copy the files.
-
-            Full Changelog:
-              - linux: [${{ needs.prepare.outputs.BUILT_HASH }}....${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_MEDUSA }}/compare/${{ needs.prepare.outputs.BUILT_HASH }}...${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID }})
-              - windows: [${{ needs.prepare.outputs.BUILT_HASH }}....${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_MEDUSA }}/compare/${{ needs.prepare.outputs.BUILT_HASH }}...${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }})
-              - fika-server: [${{ needs.prepare.outputs.BUILT_HASH_FIKA }}...${{ steps.short-hash.outputs.FIKA_HASH }}](https://github.com/project-fika/Fika-Server/compare/${{ needs.prepare.outputs.BUILT_HASH_FIKA }}...${{ steps.short-hash.outputs.FIKA_HASH }})
-
