@@ -284,8 +284,6 @@ jobs:
       OUTPUT_DIR: spt-server
       SOURCECODE_DIR: ${{ github.workspace }}/code
 
-      SPT_USER: medusa
-      SPT_REGISTRY: dev.sp-tarkov.com
       DOCKERHUB_USER: stblog
       DOCKERHUB_REPOSITORY: spt-server
       GHCR_USER: airryco
@@ -471,8 +469,8 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: |
             ${{ steps.meta.outputs.labels }}
-            org.opencontainers.image.source=https://dev.sp-tarkov.com/medusa/spt-server
-            org.opencontainers.image.url=https://dev.sp-tarkov.com/medusa/spt-server
+            org.opencontainers.image.source=https://github.com/AirryCo/spt-server
+            org.opencontainers.image.url=https://github.com/AirryCo/spt-server
             org.opencontainers.image.revision=${{ steps.debug-info.outputs.COMMIT_ID_WHOLE }}
           platforms: linux/amd64,linux/arm64
       - name: Build and Push with Fika Server
@@ -485,8 +483,8 @@ jobs:
           tags: ${{ steps.meta-fika.outputs.tags }}
           labels: |
             ${{ steps.meta.outputs.labels }}
-            org.opencontainers.image.source=https://dev.sp-tarkov.com/medusa/spt-server
-            org.opencontainers.image.url=https://dev.sp-tarkov.com/medusa/spt-server
+            org.opencontainers.image.source=https://github.com/AirryCo/spt-server
+            org.opencontainers.image.url=https://github.com/AirryCo/spt-server
             org.opencontainers.image.revision=${{ steps.debug-info.outputs.COMMIT_ID_WHOLE }}
           platforms: linux/amd64,linux/arm64
 
@@ -494,7 +492,7 @@ jobs:
         run: |
           cd ${{ env.SOURCECODE_DIR }}
           git pull
-          REMOTE_URL="https://AirryCo:${{ secrets.AIRRYCO_TOKEN }}@dev.sp-tarkov.com/${{ env.REPOSITORY_SPT_SERVER_AIRRYCO }}.git"
+          REMOTE_URL="https://AirryCo:${{ secrets.AIRRYCO_TOKEN }}@github.com/${{ env.REPOSITORY_SPT_SERVER_AIRRYCO }}.git"
           git remote set-url origin "$REMOTE_URL"
           git push
         shell: bash

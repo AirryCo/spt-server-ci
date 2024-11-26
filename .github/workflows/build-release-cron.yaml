@@ -109,7 +109,7 @@ jobs:
           git config --global user.name "github-actions[bot]"
           git config --global user.email "bot@github.com"
 
-      - name: Clone Medusa's Windows Server Code
+      - name: Clone AirroCo's Windows Server Code
         run: |
           git clone -b ${{ env.RELEASE_BRANCH }}_Win ${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_AIRRYCO }} ${{ env.SOURCECODE_DIR }}
           cd ${{ env.SOURCECODE_DIR }}
@@ -189,7 +189,7 @@ jobs:
         run: |
           cd ${{ env.SOURCECODE_DIR }}
           git pull
-          REMOTE_URL="https://AirryCo:${{ secrets.AIRRYCO_TOKEN }}@dev.sp-tarkov.com/${{ env.REPOSITORY_SPT_SERVER_AIRRYCO }}.git"
+          REMOTE_URL="https://AirryCo:${{ secrets.AIRRYCO_TOKEN }}@github.com/${{ env.REPOSITORY_SPT_SERVER_AIRRYCO }}.git"
           git remote set-url origin "$REMOTE_URL"
           git push
         shell: bash
@@ -221,7 +221,7 @@ jobs:
           git config --global user.name "github-actions[bot]"
           git config --global user.email "bot@github.com"
 
-      - name: Clone Medusa's Linux Server Code
+      - name: Clone AirryCo's Linux Server Code
         run: |
           git clone -b ${{ env.RELEASE_BRANCH }} ${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_AIRRYCO }} ${{ env.SOURCECODE_DIR }}
           cd ${{ env.SOURCECODE_DIR }}
@@ -390,7 +390,7 @@ jobs:
         run: |
           cd ${{ env.SOURCECODE_DIR }}
           git pull
-          REMOTE_URL="https://AirryCo:${{ secrets.AIRRYCO_TOKEN }}@dev.sp-tarkov.com/${{ env.REPOSITORY_SPT_SERVER_AIRRYCO }}.git"
+          REMOTE_URL="https://AirryCo:${{ secrets.AIRRYCO_TOKEN }}@github.com/${{ env.REPOSITORY_SPT_SERVER_AIRRYCO }}.git"
           git remote set-url origin "$REMOTE_URL"
           git push
           git tag -d ${{ needs.prepare.outputs.TARGET_TAG }}
