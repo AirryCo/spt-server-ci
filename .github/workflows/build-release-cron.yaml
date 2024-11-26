@@ -370,7 +370,7 @@ jobs:
             org.opencontainers.image.source=https://github.com/AirryCo/spt-server
             org.opencontainers.image.url=https://github.com/AirryCo/spt-server
             org.opencontainers.image.revision=${{ steps.debug-info.outputs.COMMIT_ID_WHOLE }}
-          platforms: linux/amd64
+          platforms: linux/amd64,linux/arm64
 
       - name: Build and Push For Latest
         if: ${{ !contains(needs.prepare.outputs.TARGET_TAG, 'BEM') }}
@@ -384,7 +384,7 @@ jobs:
             org.opencontainers.image.source=https://github.com/AirryCo/spt-server
             org.opencontainers.image.url=https://github.com/AirryCo/spt-server
             org.opencontainers.image.revision=${{ steps.debug-info.outputs.COMMIT_ID_WHOLE }}
-          platforms: linux/amd64
+          platforms: linux/amd64,linux/arm64
 
       - name: Push Linux Server Code And Tag
         run: |
@@ -475,11 +475,12 @@ jobs:
             > [!WARNING]
             > After downloading, please use extraction software like WinRAR or [7-Zip](https://www.7-zip.org/) to unzip the files, then copy them to the Tarkov root directory. Do not use Windows File Explorer to directly open and copy the files.
 
-            ***Docker Supported For linux/amd64***:
+            ***Docker Supported For linux/amd64 and linux/arm64***:
 
             ```bash
             docker pull stblog/spt-server:${{ needs.prepare.outputs.TARGET_TAG }}
             docker pull ghcr.io/airryco/spt-server:${{ needs.prepare.outputs.TARGET_TAG }}
+            docker pull registry.cn-shenzhen.aliyuncs.com/spt-server/spt-server:${{ needs.prepare.outputs.TARGET_TAG }}
             ```
 
             Full Changelog:
@@ -514,11 +515,12 @@ jobs:
             > [!WARNING]
             > After downloading, please use extraction software like WinRAR or [7-Zip](https://www.7-zip.org/) to unzip the files, then copy them to the Tarkov root directory. Do not use Windows File Explorer to directly open and copy the files.
 
-            ***Docker Supported For linux/amd64***:
+            ***Docker Supported For linux/amd64 and linux/arm64***:
 
             ```bash
             docker pull stblog/spt-server:${{ needs.prepare.outputs.TARGET_TAG }}
             docker pull ghcr.io/airryco/spt-server:${{ needs.prepare.outputs.TARGET_TAG }}
+            docker pull registry.cn-shenzhen.aliyuncs.com/spt-server/spt-server:${{ needs.prepare.outputs.TARGET_TAG }}
             ```
 
             Full Changelog:

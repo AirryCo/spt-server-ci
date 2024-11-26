@@ -604,7 +604,7 @@ jobs:
 
             Build time: ***${{ needs.prepare.outputs.BUILD_DATE_TIME }}***
 
-            **Docker Supported For linux/amd64**:
+            **Docker Supported For linux/amd64 and linux/arm64**:
 
             image id: `${{ needs.build-server-linux.outputs.DOCKER_IMAGEID }}`
 
@@ -613,6 +613,15 @@ jobs:
             ```bash
             docker pull stblog/spt-server:nightly
             docker pull ghcr.io/airryco/spt-server:nightly
+            docker pull registry.cn-shenzhen.aliyuncs.com/spt-server/spt-server:nightly
+            ```
+
+            Fika-Server built-in:
+
+            ```bash
+            docker pull stblog/spt-server:nightly-fika
+            docker pull ghcr.io/airryco/spt-server:nightly-fika
+            docker pull registry.cn-shenzhen.aliyuncs.com/spt-server/spt-server:nightly-fika
             ```
 
             > [!WARNING]
