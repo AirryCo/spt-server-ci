@@ -473,7 +473,7 @@ jobs:
             org.opencontainers.image.source=https://github.com/AirryCo/spt-server
             org.opencontainers.image.url=https://github.com/AirryCo/spt-server
             org.opencontainers.image.revision=${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID_WHOLE }}
-          platforms: linux,amd64,linux/arm64
+          platforms: linux/amd64,linux/arm64
       - name: Build and Push with Fika Server
         id: build-and-push-with-fika
         uses: docker/build-push-action@v6
@@ -487,7 +487,7 @@ jobs:
             org.opencontainers.image.source=https://github.com/AirryCo/spt-server
             org.opencontainers.image.url=https://github.com/AirryCo/spt-server
             org.opencontainers.image.revision=${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID_WHOLE }}
-          platforms: linux,amd64,linux/arm64
+          platforms: linux/amd64,linux/arm64
 
   update-trigger-and-push:
     needs: [prepare, build-server-windows, build-docker-image-multi-arch]
@@ -538,13 +538,6 @@ jobs:
         with:
           name: ${{ needs.build-fika-server.outputs.FIKA_ARTIFACT }}
           path: fika
-
-      - name: List Release Contents
-        run: |
-          ls -R windows
-          echo "========================="
-          ls -R linux
-        shell: bash
 
       - name: Compress Releases
         id: compress-release
