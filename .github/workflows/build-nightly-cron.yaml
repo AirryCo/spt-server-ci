@@ -519,7 +519,7 @@ jobs:
           fika=${{ needs.prepare.outputs.FIKA_SERVER_COMMIT }}
           echo "fika=$fika" > trigger.fika
           git add trigger.nightly trigger.fika
-          git commit -m "🤖 up to spt-server: \`$server\`, fika-server:\`$fika\`."
+          git commit -m "🤖 up to spt-server: \`$server\`, fika-server:\`${fika:0:8}\`."
           git push
         shell: bash
 
