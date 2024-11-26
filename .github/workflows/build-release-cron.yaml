@@ -208,6 +208,7 @@ jobs:
       GHCR_REPOSITORY: spt-server
     outputs:
       LINUX_COMMIT_ID: ${{ steps.debug-info.outputs.COMMIT_ID }}
+      LINUX_COMMIT_ID_WHOLE: ${{ steps.debug-info.outputs.COMMIT_ID_WHOLE }}
       LINUX_ARTIFACT: ${{ steps.filename.outputs.LINUX_ARTIFACT }}
       LINUX_RELEASE_FILE: ${{ steps.filename.outputs.LINUX_RELEASE }}
 
@@ -370,8 +371,7 @@ jobs:
             org.opencontainers.image.source=https://github.com/AirryCo/spt-server
             org.opencontainers.image.url=https://github.com/AirryCo/spt-server
             org.opencontainers.image.revision=${{ steps.debug-info.outputs.COMMIT_ID_WHOLE }}
-          platforms: linux/amd64,linux/arm64
-
+          platforms: linux/amd64
       - name: Build and Push For Latest
         if: ${{ !contains(needs.prepare.outputs.TARGET_TAG, 'BEM') }}
         uses: docker/build-push-action@v6
@@ -384,7 +384,7 @@ jobs:
             org.opencontainers.image.source=https://github.com/AirryCo/spt-server
             org.opencontainers.image.url=https://github.com/AirryCo/spt-server
             org.opencontainers.image.revision=${{ steps.debug-info.outputs.COMMIT_ID_WHOLE }}
-          platforms: linux/amd64,linux/arm64
+          platforms: linux/amd64
 
       - name: Push Linux Server Code And Tag
         run: |
@@ -399,8 +399,104 @@ jobs:
           git push -u origin ${{ needs.prepare.outputs.TARGET_TAG }}
         shell: bash
 
+  build-docker-image-multi-arch:
+    needs: [prepare, build-server-linux]
+    if: needs.prepare.outputs.PROCEED == 'true' || needs.prepare.outputs.PROCEED_FIKA == 'true'
+    runs-on: ubuntu-latest
+    env:
+      DOCKERHUB_USER: stblog
+      DOCKERHUB_REPOSITORY: spt-server
+      GHCR_USER: airryco
+      GHCR_REPOSITORY: spt-server
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # docker
+      - name: Extract metadata for Docker with bem version
+        if: ${{ contains(needs.prepare.outputs.TARGET_TAG, 'BEM') }}
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: |
+            ${{ env.DOCKERHUB_USER }}/${{ env.DOCKERHUB_REPOSITORY }}
+            ghcr.io/${{ env.GHCR_USER }}/${{ env.GHCR_REPOSITORY }}
+            registry.cn-shenzhen.aliyuncs.com/spt-server/spt-server
+          tags: |
+            type=semver,pattern={{version}},value=${{ needs.prepare.outputs.TARGET_TAG }}
+            type=semver,pattern={{major}}.{{minor}},value=${{ needs.prepare.outputs.TARGET_TAG }}
+      - name: Extract metadata for Docker with latest version
+        if: ${{ !contains(needs.prepare.outputs.TARGET_TAG, 'BEM') }}
+        id: meta-latest
+        uses: docker/metadata-action@v5
+        with:
+          images: |
+            ${{ env.DOCKERHUB_USER }}/${{ env.DOCKERHUB_REPOSITORY }}
+            ghcr.io/${{ env.GHCR_USER }}/${{ env.GHCR_REPOSITORY }}
+            registry.cn-shenzhen.aliyuncs.com/spt-server/spt-server
+          tags: |
+            type=semver,pattern={{version}},value=${{ needs.prepare.outputs.TARGET_TAG }}
+            type=semver,pattern={{major}}.{{minor}},value=${{ needs.prepare.outputs.TARGET_TAG }}
+            type=raw,value=latest
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # DockerHub
+      - name: Login to Dockerhub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ env.DOCKERHUB_USER }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      # GitHub Container Registry
+      - name: Login to Github Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ env.GHCR_USER }}
+          password: ${{ secrets.GHCR_TOKEN }}
+      # Aliyun Registry
+      - name: Login to Aliyun Registry
+        uses: docker/login-action@v3
+        with:
+          registry: registry.cn-shenzhen.aliyuncs.com
+          username: ${{ secrets.ALIYUN_REGISTRY_USER }}
+          password: ${{ secrets.ALIYUN_REGISTRY_TOKEN }}
+
+      - name: Build and Push For BEM
+        if: ${{ contains(needs.prepare.outputs.TARGET_TAG, 'BEM') }}
+        id: build-and-push
+        uses: docker/build-push-action@v6
+        with:
+          context: ./docker
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: |
+            ${{ steps.meta.outputs.labels }}
+            org.opencontainers.image.source=https://github.com/AirryCo/spt-server
+            org.opencontainers.image.url=https://github.com/AirryCo/spt-server
+            org.opencontainers.image.revision=${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID_WHOLE }}
+          platforms: linux/arm64
+      - name: Build and Push For Latest
+        if: ${{ !contains(needs.prepare.outputs.TARGET_TAG, 'BEM') }}
+        id: build-and-push
+        uses: docker/build-push-action@v6
+        with:
+          context: ./docker
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: |
+            ${{ steps.meta.outputs.labels }}
+            org.opencontainers.image.source=https://github.com/AirryCo/spt-server
+            org.opencontainers.image.url=https://github.com/AirryCo/spt-server
+            org.opencontainers.image.revision=${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID_WHOLE }}
+          platforms: linux/arm64
+
   assemble-and-publish:
-    needs: [prepare, build-server-windows, build-server-linux]
+    needs: [prepare, build-server-windows, build-server-linux, build-docker-image-multi-arch]
     runs-on: ubuntu-latest
 
     steps:

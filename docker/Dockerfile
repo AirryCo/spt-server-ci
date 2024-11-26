@@ -1,0 +1,18 @@
+FROM node:20.11.1-alpine AS server-builder
+RUN apk add --no-cache git git-lfs && \
+    git clone -b 3.10.0-DEV https://github.com/AirryCo/spt-server.git /spt-server && \
+    cd /spt-server && git lfs pull && \
+    cd project && \
+    npm install && npm run build:release
+
+FROM debian:bookworm-slim
+LABEL author="AirryCo <henry@stblog.com.cn>"
+ENV TZ=Asia/Shanghai
+COPY --from=server-builder /spt-server/project/build/ /app/spt-server/
+VOLUME /opt/spt-server
+WORKDIR /opt/spt-server
+EXPOSE 6969
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+ENTRYPOINT ["/entrypoint.sh"]
+
