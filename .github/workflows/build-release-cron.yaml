@@ -468,7 +468,6 @@ jobs:
 
       - name: Build and Push For BEM
         if: ${{ contains(needs.prepare.outputs.TARGET_TAG, 'BEM') }}
-        id: build-and-push
         uses: docker/build-push-action@v6
         with:
           context: ./docker
@@ -482,7 +481,6 @@ jobs:
           platforms: linux/arm64
       - name: Build and Push For Latest
         if: ${{ !contains(needs.prepare.outputs.TARGET_TAG, 'BEM') }}
-        id: build-and-push
         uses: docker/build-push-action@v6
         with:
           context: ./docker
