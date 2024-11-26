@@ -61,6 +61,7 @@ jobs:
           source trigger.fika
           fika_last_built_hash=${fika:0:8}
           fika_latest_commit_hash=$(git ls-remote https://github.com/project-fika/Fika-Server.git refs/heads/${{ env.NIGHTLY_BRANCH_FIKA }} | awk '{print $1}')
+          fika_latest_commit_hash=${fika_latest_commit_hash:0:8};
           if [ "$fika_last_built_hash" != "$fika_latest_commit_hash" ]; then
             if [ ${{ steps.compare-hash.outputs.PROCEED }} == 'false' ]; then
               echo "✅ There is different between fika-built-hash and fika-commit-hash, continue to build."
