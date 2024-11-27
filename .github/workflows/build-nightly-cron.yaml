@@ -108,8 +108,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - name: Clone Fika Server Code
         run: |
@@ -162,121 +160,6 @@ jobs:
           path: ${{ env.SOURCECODE_DIR }}/output
           overwrite: true
 
-  build-server-windows:
-    needs: prepare
-    if: needs.prepare.outputs.PROCEED == 'true' || needs.prepare.outputs.PROCEED_FIKA == 'true'
-    runs-on: windows-latest
-    env:
-      OUTPUT_DIR: spt-server
-      SOURCECODE_DIR: c:/snapshot
-    outputs:
-      SPT_SERVER_COMMIT_TIME: ${{ steps.merge.outputs.SPT_SERVER_COMMIT_TIME }}
-      WIN_COMMIT_ID: ${{ steps.debug-info.outputs.COMMIT_ID }}
-      WIN_ARTIFACT: ${{ steps.filename.outputs.WIN_ARTIFACT }}
-      WIN_RELEASE_FILE: ${{ steps.filename.outputs.WIN_RELEASE }}
-      WIN_RELEASE_FIKA_FILE: ${{ steps.filename.outputs.WIN_RELEASE_FIKA }}
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - name: Setup Git Config
-        run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "bot@github.com"
-
-      - name: Clone AirryCo's Windows Server Code
-        run: |
-          git clone -b ${{ env.NIGHTLY_BRANCH }}_Win ${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_AIRRYCO }} ${{ env.SOURCECODE_DIR }}
-          cd ${{ env.SOURCECODE_DIR }}
-          git lfs pull
-        shell: bash
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20.11.1
-
-      - name: Merge Server Code From SPT
-        id: merge
-        run: |
-          cd ${{ env.SOURCECODE_DIR }}
-          git pull
-          git fetch -u ${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER }}.git ${{ env.NIGHTLY_BRANCH }}:SPT-${{ env.NIGHTLY_BRANCH }}
-          git merge -m "🤖 Merge branch '${{ env.NIGHTLY_BRANCH }}' from SPT" --no-ff SPT-${{ env.NIGHTLY_BRANCH }}
-
-          SPT_SERVER_COMMIT_TIME=$(git log --pretty=format:"%ai" SPT-${{ env.NIGHTLY_BRANCH }} -1)
-          echo "👽 SPT_SERVER_COMMIT_TIME = $SPT_SERVER_COMMIT_TIME"
-          echo "SPT_SERVER_COMMIT_TIME=$SPT_SERVER_COMMIT_TIME" >> $GITHUB_OUTPUT
-        shell: bash
-
-      - name: Runner Debug Information
-        id: debug-info
-        run: |
-          cp -v ${{ env.SOURCECODE_DIR }}/project/package.json .
-          cd ${{ env.SOURCECODE_DIR }}
-          echo "git version: $(git --version)"
-          echo "git lfs version: $(git-lfs --version)"
-          echo "node.js version: $(node --version)"
-          echo "npm version: $(npm --version)"
-          echo "latest commit hash: $(git rev-parse HEAD)"
-          echo "last commit message:" && git log -1 --pretty=%B
-          echo "COMMIT_ID=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
-        shell: bash
-
-      - name: Cache NPM Dependencies
-        id: cache-npm-dependencies
-        uses: actions/cache@v4
-        with:
-          path: |
-            ${{ env.SOURCECODE_DIR }}/project/node_modules
-          key: ${{ runner.os }}-npm-dependencies-${{ hashFiles('package.json') }}
-          restore-keys: |
-            ${{ runner.os }}-npm-dependencies-
-
-      - name: Install NPM Dependencies
-        if: steps.cache-npm-dependencies.outputs.cache-hit != 'true'
-        run: |
-          cd ${{ env.SOURCECODE_DIR }}/project
-          npm install --legacy-peer-deps
-        shell: pwsh
-
-      - name: Build Windows Server
-        id: build-server
-        run: |
-          cd ${{ env.SOURCECODE_DIR }}/project
-          npm run build:release
-          ls -l build
-          mv build ${{ env.OUTPUT_DIR }}
-        shell: bash
-
-      - name: Generate Windows File Name
-        id: filename
-        run: |
-          artifact_name=${{ env.OUTPUT_DIR }}-${{ needs.prepare.outputs.SPT_VERSION }}-win-nightly-${{ steps.debug-info.outputs.COMMIT_ID }}-EFT${{ needs.prepare.outputs.EFT_VERSION }}-${{ needs.prepare.outputs.BUILD_DATE_TIME }}-artifact
-          release_name=${{ env.OUTPUT_DIR }}-${{ needs.prepare.outputs.SPT_VERSION }}-win-nightly-${{ steps.debug-info.outputs.COMMIT_ID }}-EFT${{ needs.prepare.outputs.EFT_VERSION }}-${{ needs.prepare.outputs.BUILD_DATE_TIME }}
-          echo "WIN_ARTIFACT=$artifact_name" >> $GITHUB_OUTPUT
-          echo "WIN_RELEASE=$release_name.zip" >> $GITHUB_OUTPUT
-          echo "WIN_RELEASE_FIKA=$release_name-fika.zip" >> $GITHUB_OUTPUT
-        shell: bash
-
-      - name: Artifact Winodws Server
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ steps.filename.outputs.WIN_ARTIFACT }}
-          path: ${{ env.SOURCECODE_DIR }}/project/${{ env.OUTPUT_DIR }}
-          overwrite: true
-
-      - name: Push Windows Server Code
-        run: |
-          cd ${{ env.SOURCECODE_DIR }}
-          git pull
-          REMOTE_URL="https://AirryCo:${{ secrets.AIRRYCO_TOKEN }}@github.com/${{ env.REPOSITORY_SPT_SERVER_AIRRYCO }}.git"
-          git remote set-url origin "$REMOTE_URL"
-          git push
-        shell: bash
-
   build-server-linux:
     needs: [prepare, build-fika-server]
     if: needs.prepare.outputs.PROCEED == 'true' || needs.prepare.outputs.PROCEED_FIKA == 'true'
@@ -296,8 +179,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
       - name: Setup Git Config
         run: |
           git config --global user.name "github-actions[bot]"
@@ -467,6 +348,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: ./docker
+          file: ./docker/Dockerfile-nightly
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: |
@@ -480,7 +362,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: ./docker
-          file: ./docker/Dockerfile-fika
+          file: ./docker/Dockerfile-nightly-fika
           push: true
           tags: ${{ steps.meta-fika.outputs.tags }}
           labels: |
@@ -489,6 +371,107 @@ jobs:
             org.opencontainers.image.url=https://github.com/AirryCo/spt-server
             org.opencontainers.image.revision=${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID_WHOLE }}
           platforms: linux/amd64,linux/arm64
+
+  build-server-windows:
+    needs: [prepare, build-server-linux]
+    if: needs.prepare.outputs.PROCEED == 'true' || needs.prepare.outputs.PROCEED_FIKA == 'true'
+    runs-on: windows-latest
+    env:
+      OUTPUT_DIR: spt-server
+      SOURCECODE_DIR: c:/snapshot
+    outputs:
+      SPT_SERVER_COMMIT_TIME: ${{ steps.merge.outputs.SPT_SERVER_COMMIT_TIME }}
+      WIN_COMMIT_ID: ${{ steps.debug-info.outputs.COMMIT_ID }}
+      WIN_ARTIFACT: ${{ steps.filename.outputs.WIN_ARTIFACT }}
+      WIN_RELEASE_FILE: ${{ steps.filename.outputs.WIN_RELEASE }}
+      WIN_RELEASE_FIKA_FILE: ${{ steps.filename.outputs.WIN_RELEASE_FIKA }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Clone AirryCo's Server Code
+        run: |
+          git clone -b ${{ env.NIGHTLY_BRANCH }} ${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_AIRRYCO }} ${{ env.SOURCECODE_DIR }}
+          cd ${{ env.SOURCECODE_DIR }}
+          git lfs pull
+        shell: bash
+
+      # Modify the JSON file with PowerShell
+      - name: Modify JSON file with PowerShell
+        run: |
+          cd ${{ env.SOURCECODE_DIR }}/project/assets/configs
+          $json = Get-Content -Path "core.json" | ConvertFrom-Json
+          $json.projectName = "AirryCo's SPT Windows"
+          $json | ConvertTo-Json -Depth 10 | Set-Content -Path "core.json"
+        shell: pwsh
+      - name: Replace serverExeName
+        run: |
+          cd ${{ env.SOURCECODE_DIR }}/project
+          sed -i 's/SPT.Server/SPT.Server.exe/g' gulpfile.mjs
+        shell: bash
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.11.1
+
+      - name: Runner Debug Information
+        id: debug-info
+        run: |
+          cp -v ${{ env.SOURCECODE_DIR }}/project/package.json .
+          cd ${{ env.SOURCECODE_DIR }}
+          echo "git version: $(git --version)"
+          echo "git lfs version: $(git-lfs --version)"
+          echo "node.js version: $(node --version)"
+          echo "npm version: $(npm --version)"
+          echo "latest commit hash: $(git rev-parse HEAD)"
+          echo "last commit message:" && git log -1 --pretty=%B
+          echo "COMMIT_ID=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+        shell: bash
+
+      - name: Cache NPM Dependencies
+        id: cache-npm-dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ${{ env.SOURCECODE_DIR }}/project/node_modules
+          key: ${{ runner.os }}-npm-dependencies-${{ hashFiles('package.json') }}
+          restore-keys: |
+            ${{ runner.os }}-npm-dependencies-
+
+      - name: Install NPM Dependencies
+        if: steps.cache-npm-dependencies.outputs.cache-hit != 'true'
+        run: |
+          cd ${{ env.SOURCECODE_DIR }}/project
+          npm install --legacy-peer-deps
+        shell: pwsh
+
+      - name: Build Windows Server
+        id: build-server
+        run: |
+          cd ${{ env.SOURCECODE_DIR }}/project
+          npm run build:release
+          ls -l build
+          mv build ${{ env.OUTPUT_DIR }}
+        shell: bash
+
+      - name: Generate Windows File Name
+        id: filename
+        run: |
+          artifact_name=${{ env.OUTPUT_DIR }}-${{ needs.prepare.outputs.SPT_VERSION }}-win-nightly-${{ steps.debug-info.outputs.COMMIT_ID }}-EFT${{ needs.prepare.outputs.EFT_VERSION }}-${{ needs.prepare.outputs.BUILD_DATE_TIME }}-artifact
+          release_name=${{ env.OUTPUT_DIR }}-${{ needs.prepare.outputs.SPT_VERSION }}-win-nightly-${{ steps.debug-info.outputs.COMMIT_ID }}-EFT${{ needs.prepare.outputs.EFT_VERSION }}-${{ needs.prepare.outputs.BUILD_DATE_TIME }}
+          echo "WIN_ARTIFACT=$artifact_name" >> $GITHUB_OUTPUT
+          echo "WIN_RELEASE=$release_name.zip" >> $GITHUB_OUTPUT
+          echo "WIN_RELEASE_FIKA=$release_name-fika.zip" >> $GITHUB_OUTPUT
+        shell: bash
+
+      - name: Artifact Winodws Server
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.filename.outputs.WIN_ARTIFACT }}
+          path: ${{ env.SOURCECODE_DIR }}/project/${{ env.OUTPUT_DIR }}
+          overwrite: true
 
   update-trigger-and-push:
     needs: [prepare, build-server-windows, build-docker-image-multi-arch]
@@ -515,7 +498,7 @@ jobs:
         shell: bash
 
   assemble-and-publish:
-    needs: [prepare, build-server-windows, build-server-linux, build-fika-server, build-docker-image-multi-arch, update-trigger-and-push]
+    needs: [prepare, build-fika-server, build-server-windows, build-server-linux, build-docker-image-multi-arch, update-trigger-and-push]
     runs-on: ubuntu-latest
 
     steps:
@@ -561,12 +544,6 @@ jobs:
           zip -r ../${{ needs.build-server-linux.outputs.LINUX_RELEASE_FIKA_FILE }} *
           ls -R ..
 
-      - name: Short Hash
-        id: short-hash
-        run: |
-          fika_hash=${{ needs.prepare.outputs.FIKA_SERVER_COMMIT }}
-          echo "FIKA_HASH=${fika_hash:0:8}" >> $GITHUB_OUTPUT
-
       - name: Create Github Pre-release
         uses: softprops/action-gh-release@v2
         with:
@@ -580,11 +557,9 @@ jobs:
 
             [SPT/Server](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER }}) commit hash: [${{ needs.prepare.outputs.SPT_SERVER_COMMIT }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER }}/src/commit/${{ needs.prepare.outputs.SPT_SERVER_COMMIT }}), commit time: **${{ needs.build-server-linux.outputs.SPT_SERVER_COMMIT_TIME }}**
 
-            [medusa/spt-server](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_AIRRYCO }}) commit:
-              - linux: [${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_AIRRYCO }}/src/commit/${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID }})
-              - windows: [${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_AIRRYCO }}/src/commit/${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }})
-
-            Fika-Server: [${{ steps.short-hash.outputs.FIKA_HASH }}](https://github.com/project-fika/Fika-Server/tree/${{ needs.prepare.outputs.FIKA_SERVER_COMMIT }})
+            [AirryCo/spt-server](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_AIRRYCO }}) commit: [${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_AIRRYCO }}/src/commit/${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID }})
+            
+            Fika-Server: [${{ ${{ needs.prepare.outputs.FIKA_SERVER_COMMIT }} }}](https://github.com/project-fika/Fika-Server/tree/${{ needs.prepare.outputs.FIKA_SERVER_COMMIT }})
 
             Build time: ***${{ needs.prepare.outputs.BUILD_DATE_TIME }}***
 
@@ -612,9 +587,8 @@ jobs:
             > After downloading, please use extraction software like WinRAR or [7-Zip](https://www.7-zip.org/) to unzip the files, then copy them to the Tarkov root directory. Do not use Windows File Explorer to directly open and copy the files.
 
             Full Changelog:
-              - linux: [${{ needs.prepare.outputs.BUILT_HASH }}...${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_AIRRYCO }}/compare/${{ needs.prepare.outputs.BUILT_HASH }}...${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID }})
-              - windows: [${{ needs.prepare.outputs.BUILT_HASH }}...${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_AIRRYCO }}/compare/${{ needs.prepare.outputs.BUILT_HASH }}...${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }})
-              - fika-server: [${{ needs.prepare.outputs.BUILT_HASH_FIKA }}...${{ steps.short-hash.outputs.FIKA_HASH }}](https://github.com/project-fika/Fika-Server/compare/${{ needs.prepare.outputs.BUILT_HASH_FIKA }}...${{ steps.short-hash.outputs.FIKA_HASH }})
+              - spt-server: [${{ needs.prepare.outputs.BUILT_HASH }}...${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_AIRRYCO }}/compare/${{ needs.prepare.outputs.BUILT_HASH }}...${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID }})
+              - fika-server: [${{ needs.prepare.outputs.BUILT_HASH_FIKA }}...${{ needs.prepare.outputs.FIKA_SERVER_COMMIT }}](https://github.com/project-fika/Fika-Server/compare/${{ needs.prepare.outputs.BUILT_HASH_FIKA }}...${{ needs.prepare.outputs.FIKA_SERVER_COMMIT }})
 
           files: |
             ${{ needs.build-server-windows.outputs.WIN_RELEASE_FILE }}

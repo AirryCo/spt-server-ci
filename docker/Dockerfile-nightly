@@ -1,6 +1,6 @@
 FROM node:20.11.1-alpine AS server-builder
 RUN apk add --no-cache git git-lfs && \
-    git clone -b master https://github.com/AirryCo/spt-server.git /spt-server && \
+    git clone -b 3.10.0-DEV https://github.com/AirryCo/spt-server.git /spt-server && \
     cd /spt-server && git lfs pull && \
     cd project && \
     npm install && npm run build:release

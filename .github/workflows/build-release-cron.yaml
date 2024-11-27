@@ -11,7 +11,8 @@ env:
   SERVER_URL: https://github.com
   REPOSITORY_SPT_SERVER: sp-tarkov/server
   REPOSITORY_SPT_SERVER_AIRRYCO: AirryCo/spt-server
-  RELEASE_BRANCH: 3.10.0-DEV
+  RELEASE_BRANCH: master
+  RELEASE_BRANCH_FIKA: main
 
 jobs:
   prepare:
@@ -19,7 +20,9 @@ jobs:
     outputs:
       PROCEED: ${{ steps.compare-tags.outputs.PROCEED }}
       BUILT_TAG: ${{ steps.compare-tags.outputs.BUILT_TAG }}
+      BUILT_TAG_FIKA: ${{ steps.get-fika-tag.outputs.BUILT_TAG }}
       TARGET_TAG: ${{ steps.compare-tags.outputs.TARGET_TAG }}
+      TARGET_TAG_FIKA: ${{ steps.get-fika-tag.outputs.TARGET_TAG}}
 
       SPT_VERSION: ${{ steps.versions.outputs.SPT_VERSION }}
       EFT_VERSION: ${{ steps.versions.outputs.EFT_VERSION }}
@@ -45,7 +48,8 @@ jobs:
       - name: Compare Tags
         id: compare-tags
         run: |
-          server_last_built_tag=$(cat trigger.release)
+          source trigger.release
+          server_last_built_tag=$server
           server_latest_tag=${{ steps.get-latest-tag.outputs.SPT_SERVER_LATEST_TAG }}
           if [ "$server_last_built_tag" != "$server_latest_tag" ]; then
             echo "✅ There is different between last-built-tag and lastest-tag, continue to build."
@@ -56,6 +60,16 @@ jobs:
             echo "✋ last-built-tag and latest-tag are the same, stop building."
             echo "PROCEED=false" >> $GITHUB_OUTPUT
           fi
+        shell: bash
+      - name: Get Fika-Server Latest Tag
+        id: get-fika-tag
+        if: steps.compare-tags.outputs.PROCEED == 'true'
+        run: |
+          source trigger.release
+          fika_built_tag=$fika
+          fika_latest_tag=$(git ls-remote --tags https://github.com/project-fika/Fika-Server.git | sort -t/ -k3 -V | tail -n 1 | awk '{print $2}' | sed 's/refs\/tags\///')
+          echo "BUILT_TAG=$fika_built_tag" >> $GITHUB_OUTPUT
+          echo "TARGET_TAG=$fika_latest_tag" >> $GITHUB_OUTPUT
         shell: bash
       - name: Extract versions
         id: versions
@@ -87,113 +101,6 @@ jobs:
           echo "DATE_TIME=$(date +%Y%m%d%H%M%S)" >> $GITHUB_OUTPUT
         shell: bash
 
-  build-server-windows:
-    needs: prepare
-    if: ${{ needs.prepare.outputs.PROCEED == 'true' }}
-    runs-on: windows-latest
-    env:
-      OUTPUT_DIR: spt-server
-      SOURCECODE_DIR: c:/code
-    outputs:
-      WIN_COMMIT_ID: ${{ steps.debug-info.outputs.COMMIT_ID }}
-      WIN_ARTIFACT: ${{ steps.filename.outputs.WIN_ARTIFACT }}
-      WIN_RELEASE_FILE: ${{ steps.filename.outputs.WIN_RELEASE }}
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - name: Setup Git Config
-        run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "bot@github.com"
-
-      - name: Clone AirroCo's Windows Server Code
-        run: |
-          git clone -b ${{ env.RELEASE_BRANCH }}_Win ${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_AIRRYCO }} ${{ env.SOURCECODE_DIR }}
-          cd ${{ env.SOURCECODE_DIR }}
-          git lfs pull
-        shell: bash
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20.11.1
-
-      - name: Merge Server Code From SPT
-        run: |
-          cd ${{ env.SOURCECODE_DIR }}
-          git pull
-          git fetch -u ${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER }}.git ${{ env.RELEASE_BRANCH }}:SPT-${{ env.RELEASE_BRANCH }}
-          git merge -m "🤖 Merge tag \`${{ needs.prepare.outputs.TARGET_TAG }}\` from SPT" --no-ff ${{ needs.prepare.outputs.TARGET_TAG }}
-        shell: bash
-
-      - name: Runner Debug Information
-        id: debug-info
-        run: |
-          cp -v ${{ env.SOURCECODE_DIR }}/project/package.json .
-          cd ${{ env.SOURCECODE_DIR }}
-          echo "git version: $(git --version)"
-          echo "git lfs version: $(git-lfs --version)"
-          echo "node.js version: $(node --version)"
-          echo "npm version: $(npm --version)"
-          echo "latest commit hash: $(git rev-parse HEAD)"
-          echo "last commit message:" && git log -1 --pretty=%B
-          echo "COMMIT_ID=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
-        shell: bash
-
-      - name: Cache NPM Dependencies
-        id: cache-npm-dependencies
-        uses: actions/cache@v4
-        with:
-          path: |
-            ${{ env.SOURCECODE_DIR }}/project/node_modules
-          key: ${{ runner.os }}-npm-dependencies-${{ hashFiles('package.json') }}
-          restore-keys: |
-            ${{ runner.os }}-npm-dependencies-
-
-      - name: Install NPM Dependencies
-        if: steps.cache-npm-dependencies.outputs.cache-hit != 'true'
-        run: |
-          cd ${{ env.SOURCECODE_DIR }}/project
-          npm install
-        shell: pwsh
-
-      - name: Build Windows Server
-        id: build-server
-        run: |
-          cd ${{ env.SOURCECODE_DIR }}/project
-          npm run build:release
-          ls -l build
-          mv build ${{ env.OUTPUT_DIR }}
-        shell: bash
-
-      - name: Generate Windows File Name
-        id: filename
-        run: |
-          artifact_name=${{ env.OUTPUT_DIR }}-${{ needs.prepare.outputs.TARGET_TAG }}-win-release-${{ steps.debug-info.outputs.COMMIT_ID }}-EFT${{ needs.prepare.outputs.EFT_VERSION }}-${{ needs.prepare.outputs.BUILD_DATE_TIME }}-artifact
-          release_name=${{ env.OUTPUT_DIR }}-${{ needs.prepare.outputs.TARGET_TAG }}-win-release-${{ steps.debug-info.outputs.COMMIT_ID }}-EFT${{ needs.prepare.outputs.EFT_VERSION }}-${{ needs.prepare.outputs.BUILD_DATE_TIME }}.zip
-          echo "WIN_ARTIFACT=$artifact_name" >> $GITHUB_OUTPUT
-          echo "WIN_RELEASE=$release_name" >> $GITHUB_OUTPUT
-        shell: bash
-
-      - name: Artifact Windows Server
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ steps.filename.outputs.WIN_ARTIFACT }}
-          path: ${{ env.SOURCECODE_DIR }}/project/${{ env.OUTPUT_DIR }}
-          overwrite: true
-
-      - name: Push Windows Server Code
-        run: |
-          cd ${{ env.SOURCECODE_DIR }}
-          git pull
-          REMOTE_URL="https://AirryCo:${{ secrets.AIRRYCO_TOKEN }}@github.com/${{ env.REPOSITORY_SPT_SERVER_AIRRYCO }}.git"
-          git remote set-url origin "$REMOTE_URL"
-          git push
-        shell: bash
-
   build-server-linux:
     needs: prepare
     if: ${{ needs.prepare.outputs.PROCEED == 'true' }}
@@ -211,12 +118,11 @@ jobs:
       LINUX_COMMIT_ID_WHOLE: ${{ steps.debug-info.outputs.COMMIT_ID_WHOLE }}
       LINUX_ARTIFACT: ${{ steps.filename.outputs.LINUX_ARTIFACT }}
       LINUX_RELEASE_FILE: ${{ steps.filename.outputs.LINUX_RELEASE }}
+      LINUX_RELEASE_FIKA_FILE: ${{ steps.filename.outputs.LINUX_RELEASE_FIKA }}
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
       - name: Setup Git Config
         run: |
           git config --global user.name "github-actions[bot]"
@@ -287,9 +193,10 @@ jobs:
         id: filename
         run: |
           artifact_name=${{ env.OUTPUT_DIR }}-${{ needs.prepare.outputs.TARGET_TAG }}-linux-release-${{ steps.debug-info.outputs.COMMIT_ID }}-EFT${{ needs.prepare.outputs.EFT_VERSION }}-${{ needs.prepare.outputs.BUILD_DATE_TIME }}-artifact
-          release_name=${{ env.OUTPUT_DIR }}-${{ needs.prepare.outputs.TARGET_TAG }}-linux-release-${{ steps.debug-info.outputs.COMMIT_ID }}-EFT${{ needs.prepare.outputs.EFT_VERSION }}-${{ needs.prepare.outputs.BUILD_DATE_TIME }}.zip
+          release_name=${{ env.OUTPUT_DIR }}-${{ needs.prepare.outputs.TARGET_TAG }}-linux-release-${{ steps.debug-info.outputs.COMMIT_ID }}-EFT${{ needs.prepare.outputs.EFT_VERSION }}-${{ needs.prepare.outputs.BUILD_DATE_TIME }}
           echo "LINUX_ARTIFACT=$artifact_name" >> $GITHUB_OUTPUT
-          echo "LINUX_RELEASE=$release_name" >> $GITHUB_OUTPUT
+          echo "LINUX_RELEASE=$release_name.zip" >> $GITHUB_OUTPUT
+          echo "LINUX_RELEASE_FIKA=$release_name-fika.zip" >> $GITHUB_OUTPUT
         shell: bash
 
       - name: Artifact Linux Server
@@ -327,8 +234,8 @@ jobs:
         uses: actions/checkout@v4
 
       # docker
-      - name: Extract metadata for Docker with bem version
-        if: ${{ contains(needs.prepare.outputs.TARGET_TAG, 'BEM') }}
+      - name: Extract metadata for Docker with release version
+        if: ${{ !contains(needs.prepare.outputs.TARGET_TAG, 'BEM') }}
         id: meta
         uses: docker/metadata-action@v5
         with:
@@ -339,9 +246,23 @@ jobs:
           tags: |
             type=semver,pattern={{version}},value=${{ needs.prepare.outputs.TARGET_TAG }}
             type=semver,pattern={{major}}.{{minor}},value=${{ needs.prepare.outputs.TARGET_TAG }}
-      - name: Extract metadata for Docker with latest version
+            type=raw,value=latest
+      - name: Extract metadata for Docker with release version and fika built-in
         if: ${{ !contains(needs.prepare.outputs.TARGET_TAG, 'BEM') }}
-        id: meta-latest
+        id: meta-fika
+        uses: docker/metadata-action@v5
+        with:
+          images: |
+            ${{ env.DOCKERHUB_USER }}/${{ env.DOCKERHUB_REPOSITORY }}
+            ghcr.io/${{ env.GHCR_USER }}/${{ env.GHCR_REPOSITORY }}
+            registry.cn-shenzhen.aliyuncs.com/spt-server/spt-server
+          tags: |
+            type=semver,pattern={{version}}-fika,value=${{ needs.prepare.outputs.TARGET_TAG }}
+            type=semver,pattern={{major}}.{{minor}}-fika,value=${{ needs.prepare.outputs.TARGET_TAG }}
+            type=raw,value=latest-fika
+      - name: Extract metadata for Docker with bem version
+        if: ${{ contains(needs.prepare.outputs.TARGET_TAG, 'BEM') }}
+        id: meta-bem
         uses: docker/metadata-action@v5
         with:
           images: |
@@ -351,7 +272,18 @@ jobs:
           tags: |
             type=semver,pattern={{version}},value=${{ needs.prepare.outputs.TARGET_TAG }}
             type=semver,pattern={{major}}.{{minor}},value=${{ needs.prepare.outputs.TARGET_TAG }}
-            type=raw,value=latest
+      - name: Extract metadata for Docker with bem version and fika built-in
+        if: ${{ contains(needs.prepare.outputs.TARGET_TAG, 'BEM') }}
+        id: meta-bem-fika
+        uses: docker/metadata-action@v5
+        with:
+          images: |
+            ${{ env.DOCKERHUB_USER }}/${{ env.DOCKERHUB_REPOSITORY }}
+            ghcr.io/${{ env.GHCR_USER }}/${{ env.GHCR_REPOSITORY }}
+            registry.cn-shenzhen.aliyuncs.com/spt-server/spt-server
+          tags: |
+            type=semver,pattern={{version}}-fika,value=${{ needs.prepare.outputs.TARGET_TAG }}
+            type=semver,pattern={{major}}.{{minor}}-fika,value=${{ needs.prepare.outputs.TARGET_TAG }}
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
@@ -379,20 +311,7 @@ jobs:
           username: ${{ secrets.ALIYUN_REGISTRY_USER }}
           password: ${{ secrets.ALIYUN_REGISTRY_TOKEN }}
 
-      - name: Build and Push For BEM
-        if: ${{ contains(needs.prepare.outputs.TARGET_TAG, 'BEM') }}
-        uses: docker/build-push-action@v6
-        with:
-          context: ./docker
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: |
-            ${{ steps.meta.outputs.labels }}
-            org.opencontainers.image.source=https://github.com/AirryCo/spt-server
-            org.opencontainers.image.url=https://github.com/AirryCo/spt-server
-            org.opencontainers.image.revision=${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID_WHOLE }}
-          platforms: linux/amd64,linux/arm64
-      - name: Build and Push For Latest
+      - name: Build and Push For Release
         if: ${{ !contains(needs.prepare.outputs.TARGET_TAG, 'BEM') }}
         uses: docker/build-push-action@v6
         with:
@@ -405,6 +324,147 @@ jobs:
             org.opencontainers.image.url=https://github.com/AirryCo/spt-server
             org.opencontainers.image.revision=${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID_WHOLE }}
           platforms: linux/amd64,linux/arm64
+      - name: Build and Push For Release With Fika
+        if: ${{ !contains(needs.prepare.outputs.TARGET_TAG, 'BEM') }}
+        uses: docker/build-push-action@v6
+        with:
+          context: ./docker
+          file: ./docker/Dockerfile-fika
+          push: true
+          tags: ${{ steps.meta-fika.outputs.tags }}
+          labels: |
+            ${{ steps.meta-fika.outputs.labels }}
+            org.opencontainers.image.source=https://github.com/AirryCo/spt-server
+            org.opencontainers.image.url=https://github.com/AirryCo/spt-server
+            org.opencontainers.image.revision=${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID_WHOLE }}
+          platforms: linux/amd64,linux/arm64
+      - name: Build and Push For BEM
+        if: ${{ contains(needs.prepare.outputs.TARGET_TAG, 'BEM') }}
+        uses: docker/build-push-action@v6
+        with:
+          context: ./docker
+          push: true
+          tags: ${{ steps.meta-bem.outputs.tags }}
+          labels: |
+            ${{ steps.meta-bem.outputs.labels }}
+            org.opencontainers.image.source=https://github.com/AirryCo/spt-server
+            org.opencontainers.image.url=https://github.com/AirryCo/spt-server
+            org.opencontainers.image.revision=${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID_WHOLE }}
+          platforms: linux/amd64,linux/arm64
+      - name: Build and Push For BEM With Fika
+        if: ${{ contains(needs.prepare.outputs.TARGET_TAG, 'BEM') }}
+        uses: docker/build-push-action@v6
+        with:
+          context: ./docker
+          file: ./docker/Dockerfile-fika
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: |
+            ${{ steps.meta.outputs.labels }}
+            org.opencontainers.image.source=https://github.com/AirryCo/spt-server
+            org.opencontainers.image.url=https://github.com/AirryCo/spt-server
+            org.opencontainers.image.revision=${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID_WHOLE }}
+          platforms: linux/amd64,linux/arm64
+
+  build-server-windows:
+    needs: [prepare, build-server-linux]
+    if: ${{ needs.prepare.outputs.PROCEED == 'true' }}
+    runs-on: windows-latest
+    env:
+      OUTPUT_DIR: spt-server
+      SOURCECODE_DIR: c:/snapshot
+    outputs:
+      WIN_COMMIT_ID: ${{ steps.debug-info.outputs.COMMIT_ID }}
+      WIN_ARTIFACT: ${{ steps.filename.outputs.WIN_ARTIFACT }}
+      WIN_RELEASE_FILE: ${{ steps.filename.outputs.WIN_RELEASE }}
+      WIN_RELEASE_FIKA_FILE: ${{ steps.filename.outputs.WIN_RELEASE_FIKA }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Clone AirroCo's Server Code
+        run: |
+          git clone -b ${{ env.RELEASE_BRANCH }} ${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_AIRRYCO }} ${{ env.SOURCECODE_DIR }}
+          cd ${{ env.SOURCECODE_DIR }}
+          git lfs pull
+        shell: bash
+
+      # Modify the JSON file with PowerShell
+      - name: Modify JSON file with PowerShell
+        run: |
+          cd ${{ env.SOURCECODE_DIR }}/project/assets/configs
+          $json = Get-Content -Path "core.json" | ConvertFrom-Json
+          $json.projectName = "AirryCo's SPT Windows"
+          $json | ConvertTo-Json -Depth 10 | Set-Content -Path "core.json"
+        shell: pwsh
+      - name: Replace serverExeName
+        run: |
+          cd ${{ env.SOURCECODE_DIR }}/project
+          sed -i 's/SPT.Server/SPT.Server.exe/g' gulpfile.mjs
+        shell: bash
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.11.1
+
+      - name: Runner Debug Information
+        id: debug-info
+        run: |
+          cp -v ${{ env.SOURCECODE_DIR }}/project/package.json .
+          cd ${{ env.SOURCECODE_DIR }}
+          echo "git version: $(git --version)"
+          echo "git lfs version: $(git-lfs --version)"
+          echo "node.js version: $(node --version)"
+          echo "npm version: $(npm --version)"
+          echo "latest commit hash: $(git rev-parse HEAD)"
+          echo "last commit message:" && git log -1 --pretty=%B
+          echo "COMMIT_ID=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+        shell: bash
+
+      - name: Cache NPM Dependencies
+        id: cache-npm-dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ${{ env.SOURCECODE_DIR }}/project/node_modules
+          key: ${{ runner.os }}-npm-dependencies-${{ hashFiles('package.json') }}
+          restore-keys: |
+            ${{ runner.os }}-npm-dependencies-
+
+      - name: Install NPM Dependencies
+        if: steps.cache-npm-dependencies.outputs.cache-hit != 'true'
+        run: |
+          cd ${{ env.SOURCECODE_DIR }}/project
+          npm install
+        shell: pwsh
+
+      - name: Build Windows Server
+        id: build-server
+        run: |
+          cd ${{ env.SOURCECODE_DIR }}/project
+          npm run build:release
+          ls -l build
+          mv build ${{ env.OUTPUT_DIR }}
+        shell: bash
+
+      - name: Generate Windows File Name
+        id: filename
+        run: |
+          artifact_name=${{ env.OUTPUT_DIR }}-${{ needs.prepare.outputs.TARGET_TAG }}-win-release-${{ steps.debug-info.outputs.COMMIT_ID }}-EFT${{ needs.prepare.outputs.EFT_VERSION }}-${{ needs.prepare.outputs.BUILD_DATE_TIME }}-artifact
+          release_name=${{ env.OUTPUT_DIR }}-${{ needs.prepare.outputs.TARGET_TAG }}-win-release-${{ steps.debug-info.outputs.COMMIT_ID }}-EFT${{ needs.prepare.outputs.EFT_VERSION }}-${{ needs.prepare.outputs.BUILD_DATE_TIME }}
+          echo "WIN_ARTIFACT=$artifact_name" >> $GITHUB_OUTPUT
+          echo "WIN_RELEASE=$release_name.zip" >> $GITHUB_OUTPUT
+          echo "WIN_RELEASE_FIKA=$release_name-fika.zip" >> $GITHUB_OUTPUT
+        shell: bash
+
+      - name: Artifact Windows Server
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.filename.outputs.WIN_ARTIFACT }}
+          path: ${{ env.SOURCECODE_DIR }}/project/${{ env.OUTPUT_DIR }}
+          overwrite: true
 
   assemble-and-publish:
     needs: [prepare, build-server-windows, build-server-linux, build-docker-image-multi-arch]
@@ -423,7 +483,8 @@ jobs:
         run: |
           git pull
           rm trigger.release
-          echo "${{ needs.prepare.outputs.TARGET_TAG }}" > trigger.release
+          echo "server=${{ needs.prepare.outputs.TARGET_TAG }}" > trigger.release
+          echo "fika=${{ needs.prepare.outputs.TARGET_TAG_FIKA }}" >> trigger.release
           git add trigger.release
           git commit -m "🤖 bump to \`${{ needs.prepare.outputs.TARGET_TAG }}\`."
           git push
@@ -441,15 +502,31 @@ jobs:
           name: ${{ needs.build-server-linux.outputs.LINUX_ARTIFACT }}
           path: linux
 
+      - name: Download Fika-Server
+        run: |
+          wget https://github.com/project-fika/Fika-Server/releases/download/${{ needs.prepare.outputs.TARGET_TAG_FIKA }}/fika-server.zip
+
       - name: Compress Releases
         id: compress-release
         run: |
           cd windows
+          unzip ../fika-server.zip
           zip -r ../${{ needs.build-server-windows.outputs.WIN_RELEASE_FILE }} *
           cd ../linux
+          unzip ../fika-server.zip
           zip -r ../${{ needs.build-server-linux.outputs.LINUX_RELEASE_FILE }} *
           ls -R ..
         shell: bash
+      - name: Compress Releases With Fika
+        id: compress-release-fika
+        run: |
+          cd windows
+          unzip ../fika-server.zip
+          zip -r ../${{ needs.build-server-windows.outputs.WIN_RELEASE_FIKA_FILE }} *
+          cd ../linux
+          unzip ../fika-server.zip
+          zip -r ../${{ needs.build-server-linux.outputs.LINUX_RELEASE_FIKA_FILE }} *
+          ls -R ..
 
       - name: Create Github Pre-release
         id: create_pre_release
@@ -466,10 +543,10 @@ jobs:
 
             [SPT/Server](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER }}) commit hash: [${{ needs.prepare.outputs.SPT_SERVER_COMMIT }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER }}/src/commit/${{ needs.prepare.outputs.SPT_SERVER_COMMIT }}), commit time: **${{ needs.prepare.outputs.SPT_SERVER_COMMIT_TIME }}**
 
-            [medusa/spt-server](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_AIRRYCO }}) commit:
-              - linux: [${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_AIRRYCO }}/src/commit/${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID }})
-              - windows: [${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_AIRRYCO }}/src/commit/${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }})
-
+            [AirryCo/spt-server](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_AIRRYCO }}) commit: [${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_AIRRYCO }}/src/commit/${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID }})
+ 
+            Fika-Server: [${{ needs.prepare.outputs.TARGET_TAG_FIKA }}](https://github.com/project-fika/Fika-Server/tree/${{ needs.prepare.outputs.TARGET_TAG_FIKA }})
+            
             Build time: ***${{ needs.prepare.outputs.BUILD_DATE_TIME }}***
 
             > [!WARNING]
@@ -483,13 +560,22 @@ jobs:
             docker pull registry.cn-shenzhen.aliyuncs.com/spt-server/spt-server:${{ needs.prepare.outputs.TARGET_TAG }}
             ```
 
-            Full Changelog:
-              - linux: [${{ needs.prepare.outputs.BUILT_TAG }}....${{ needs.prepare.outputs.TARGET_TAG }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_AIRRYCO }}/compare/${{ needs.prepare.outputs.BUILT_TAG }}...${{ needs.prepare.outputs.TARGET_TAG }})
-              - windows: [${{ needs.prepare.outputs.BUILT_TAG }}....${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_AIRRYCO }}/compare/${{ needs.prepare.outputs.BUILT_TAG }}...${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }})
+            Fika-Server built-in:
 
+            ```bash
+            docker pull stblog/spt-server:${{ needs.prepare.outputs.TARGET_TAG }}-fika
+            docker pull ghcr.io/airryco/spt-server:${{ needs.prepare.outputs.TARGET_TAG }}-fika
+            docker pull registry.cn-shenzhen.aliyuncs.com/spt-server/spt-server:${{ needs.prepare.outputs.TARGET_TAG }}-fika
+            ```
+
+            Full Changelog: 
+              - spt-server: [${{ needs.prepare.outputs.BUILT_TAG }}....${{ needs.prepare.outputs.TARGET_TAG }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_AIRRYCO }}/compare/${{ needs.prepare.outputs.BUILT_TAG }}...${{ needs.prepare.outputs.TARGET_TAG }})
+              - fika-server: [${{ needs.prepare.outputs.BUILT_TAG_FIKA }}....${{ needs.prepare.outputs.TARGET_TAG_FIKA }}](https://github.com/project-fika/Fika-Server/compare/${{ needs.prepare.outputs.BUILT_TAG }}...${{ needs.prepare.outputs.TARGET_TAG }})
           files: |
             ${{ needs.build-server-windows.outputs.WIN_RELEASE_FILE }}
             ${{ needs.build-server-linux.outputs.LINUX_RELEASE_FILE }}
+            ${{ needs.build-server-windows.outputs.WIN_RELEASE_FIKA_FILE }}
+            ${{ needs.build-server-linux.outputs.LINUX_RELEASE_FIKA_FILE }}
 
       - name: Create Github Release
         id: create_release
@@ -502,13 +588,13 @@ jobs:
           body: |
             SPT: ***${{ needs.prepare.outputs.SPT_VERSION }}***
 
+            Tarkov: ***${{ needs.prepare.outputs.EFT_VERSION }}***
+
             [SPT/Server](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER }}) commit hash: [${{ needs.prepare.outputs.SPT_SERVER_COMMIT }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER }}/src/commit/${{ needs.prepare.outputs.SPT_SERVER_COMMIT }}), commit time: **${{ needs.prepare.outputs.SPT_SERVER_COMMIT_TIME }}**
 
-            [medusa/spt-server](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_AIRRYCO }}) commit:
-              - linux: [${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_AIRRYCO }}/src/commit/${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID }})
-              - windows: [${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_AIRRYCO }}/src/commit/${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }})
+            [AirryCo/spt-server](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_AIRRYCO }}) commit: [${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_AIRRYCO }}/src/commit/${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID }})
 
-            Tarkov: ***${{ needs.prepare.outputs.EFT_VERSION }}***
+            Fika-Server: [${{ needs.prepare.outputs.TARGET_TAG_FIKA }}](https://github.com/project-fika/Fika-Server/tree/${{ needs.prepare.outputs.TARGET_TAG_FIKA }})
 
             Build time: ***${{ needs.prepare.outputs.BUILD_DATE_TIME }}***
 
@@ -523,10 +609,19 @@ jobs:
             docker pull registry.cn-shenzhen.aliyuncs.com/spt-server/spt-server:${{ needs.prepare.outputs.TARGET_TAG }}
             ```
 
-            Full Changelog:
-              - linux: [${{ needs.prepare.outputs.BUILT_TAG }}....${{ needs.prepare.outputs.TARGET_TAG }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_AIRRYCO }}/compare/${{ needs.prepare.outputs.BUILT_TAG }}...${{ needs.prepare.outputs.TARGET_TAG }})
-              - windows: [${{ needs.prepare.outputs.BUILT_TAG }}....${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_AIRRYCO }}/compare/${{ needs.prepare.outputs.BUILT_TAG }}...${{ needs.build-server-windows.outputs.WIN_COMMIT_ID }})
+            Fika-Server built-in:
 
+            ```bash
+            docker pull stblog/spt-server:${{ needs.prepare.outputs.TARGET_TAG }}-fika
+            docker pull ghcr.io/airryco/spt-server:${{ needs.prepare.outputs.TARGET_TAG }}-fika
+            docker pull registry.cn-shenzhen.aliyuncs.com/spt-server/spt-server:${{ needs.prepare.outputs.TARGET_TAG }}-fika
+            ```
+
+            Full Changelog: 
+              - spt-server: [${{ needs.prepare.outputs.BUILT_TAG }}....${{ needs.prepare.outputs.TARGET_TAG }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_AIRRYCO }}/compare/${{ needs.prepare.outputs.BUILT_TAG }}...${{ needs.prepare.outputs.TARGET_TAG }})
+              - fika-server: [${{ needs.prepare.outputs.BUILT_TAG_FIKA }}....${{ needs.prepare.outputs.TARGET_TAG_FIKA }}](https://github.com/project-fika/Fika-Server/compare/${{ needs.prepare.outputs.BUILT_TAG }}...${{ needs.prepare.outputs.TARGET_TAG }})
           files: |
             ${{ needs.build-server-windows.outputs.WIN_RELEASE_FILE }}
             ${{ needs.build-server-linux.outputs.LINUX_RELEASE_FILE }}
+            ${{ needs.build-server-windows.outputs.WIN_RELEASE_FIKA_FILE }}
+            ${{ needs.build-server-linux.outputs.LINUX_RELEASE_FIKA_FILE }}
