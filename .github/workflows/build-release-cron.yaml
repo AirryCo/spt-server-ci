@@ -311,19 +311,6 @@ jobs:
           username: ${{ secrets.ALIYUN_REGISTRY_USER }}
           password: ${{ secrets.ALIYUN_REGISTRY_TOKEN }}
 
-      - name: Build and Push For Release
-        if: ${{ !contains(needs.prepare.outputs.TARGET_TAG, 'BEM') }}
-        uses: docker/build-push-action@v6
-        with:
-          context: ./docker
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: |
-            ${{ steps.meta.outputs.labels }}
-            org.opencontainers.image.source=https://github.com/AirryCo/spt-server
-            org.opencontainers.image.url=https://github.com/AirryCo/spt-server
-            org.opencontainers.image.revision=${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID_WHOLE }}
-          platforms: linux/amd64,linux/arm64
       - name: Build and Push For Release With Fika
         if: ${{ !contains(needs.prepare.outputs.TARGET_TAG, 'BEM') }}
         uses: docker/build-push-action@v6
@@ -338,6 +325,34 @@ jobs:
             org.opencontainers.image.url=https://github.com/AirryCo/spt-server
             org.opencontainers.image.revision=${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID_WHOLE }}
           platforms: linux/amd64,linux/arm64
+      - name: Build and Push For Release
+        if: ${{ !contains(needs.prepare.outputs.TARGET_TAG, 'BEM') }}
+        uses: docker/build-push-action@v6
+        with:
+          context: ./docker
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: |
+            ${{ steps.meta.outputs.labels }}
+            org.opencontainers.image.source=https://github.com/AirryCo/spt-server
+            org.opencontainers.image.url=https://github.com/AirryCo/spt-server
+            org.opencontainers.image.revision=${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID_WHOLE }}
+          platforms: linux/amd64,linux/arm64
+
+      - name: Build and Push For BEM With Fika
+        if: ${{ contains(needs.prepare.outputs.TARGET_TAG, 'BEM') }}
+        uses: docker/build-push-action@v6
+        with:
+          context: ./docker
+          file: ./docker/Dockerfile-fika
+          push: true
+          tags: ${{ steps.meta-bem-fika.outputs.tags }}
+          labels: |
+            ${{ steps.meta-bem-fika.outputs.labels }}
+            org.opencontainers.image.source=https://github.com/AirryCo/spt-server
+            org.opencontainers.image.url=https://github.com/AirryCo/spt-server
+            org.opencontainers.image.revision=${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID_WHOLE }}
+          platforms: linux/amd64,linux/arm64
       - name: Build and Push For BEM
         if: ${{ contains(needs.prepare.outputs.TARGET_TAG, 'BEM') }}
         uses: docker/build-push-action@v6
@@ -347,20 +362,6 @@ jobs:
           tags: ${{ steps.meta-bem.outputs.tags }}
           labels: |
             ${{ steps.meta-bem.outputs.labels }}
-            org.opencontainers.image.source=https://github.com/AirryCo/spt-server
-            org.opencontainers.image.url=https://github.com/AirryCo/spt-server
-            org.opencontainers.image.revision=${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID_WHOLE }}
-          platforms: linux/amd64,linux/arm64
-      - name: Build and Push For BEM With Fika
-        if: ${{ contains(needs.prepare.outputs.TARGET_TAG, 'BEM') }}
-        uses: docker/build-push-action@v6
-        with:
-          context: ./docker
-          file: ./docker/Dockerfile-fika
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: |
-            ${{ steps.meta.outputs.labels }}
             org.opencontainers.image.source=https://github.com/AirryCo/spt-server
             org.opencontainers.image.url=https://github.com/AirryCo/spt-server
             org.opencontainers.image.revision=${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID_WHOLE }}
