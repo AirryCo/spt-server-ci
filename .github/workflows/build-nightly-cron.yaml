@@ -559,7 +559,7 @@ jobs:
 
             [AirryCo/spt-server](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_AIRRYCO }}) commit: [${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_AIRRYCO }}/src/commit/${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID }})
             
-            Fika-Server: [${{ ${{ needs.prepare.outputs.FIKA_SERVER_COMMIT }} }}](https://github.com/project-fika/Fika-Server/tree/${{ needs.prepare.outputs.FIKA_SERVER_COMMIT }})
+            Fika-Server: [${{ needs.prepare.outputs.FIKA_SERVER_COMMIT }}](https://github.com/project-fika/Fika-Server/tree/${{ needs.prepare.outputs.FIKA_SERVER_COMMIT }})
 
             Build time: ***${{ needs.prepare.outputs.BUILD_DATE_TIME }}***
 
