@@ -510,10 +510,8 @@ jobs:
         id: compress-release
         run: |
           cd windows
-          unzip ../fika-server.zip
           zip -r ../${{ needs.build-server-windows.outputs.WIN_RELEASE_FILE }} *
           cd ../linux
-          unzip ../fika-server.zip
           zip -r ../${{ needs.build-server-linux.outputs.LINUX_RELEASE_FILE }} *
           ls -R ..
         shell: bash
