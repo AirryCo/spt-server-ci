@@ -2,8 +2,8 @@
 
 if [ -f /opt/spt-server/SPT.Server ]; then
   appHash=$(md5sum /app/spt-server/SPT.Server | awk '{ print $1 }')
-  optHash=$(md5sum /opt/spt-server/SPT.Server | awk '{ print $1 }')
-  if [ "$appHash" = "$optHash" ]; then
+  exeHash=$(md5sum /opt/spt-server/SPT.Server | awk '{ print $1 }')
+  if [ "$appHash" = "$exeHash" ]; then
     echo "MD5 verification successful!"
   else
     echo "MD5 mismatch, copy files to /opt/spt-server."
