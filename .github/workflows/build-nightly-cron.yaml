@@ -58,7 +58,7 @@ jobs:
       - name: Compare Fika Hashes
         id: compare-fika
         run: |
-          source trigger.fika
+          source trigger.nightly
           fika_last_built_hash=${fika:0:8}
           fika_latest_commit_hash=$(git ls-remote https://github.com/project-fika/Fika-Server.git refs/heads/${{ env.NIGHTLY_BRANCH_FIKA }} | awk '{print $1}')
           fika_latest_commit_hash=${fika_latest_commit_hash:0:8};
@@ -97,7 +97,7 @@ jobs:
 
   build-fika-server:
     needs: prepare
-    if: needs.prepare.outputs.PROCEED == 'true' || needs.prepare.outputs.PROCEED_FIKA == 'true'
+    if: needs.prepare.outputs.PROCEED == 'true'
     runs-on: ubuntu-latest
     env:
       SOURCECODE_DIR: ${{ github.workspace }}/fika-server
@@ -111,7 +111,7 @@ jobs:
 
       - name: Clone Fika Server Code
         run: |
-          git clone -b ${{ env.NIGHTLY_BRANCH_FIKA }} https://github.com/project-fika/Fika-Server.git ${{ env.SOURCECODE_DIR }}
+          git clone -b ${{ env.NIGHTLY_BRANCH_FIKA }} --depth=1 https://github.com/project-fika/Fika-Server.git ${{ env.SOURCECODE_DIR }}
         shell: bash
 
       - name: Setup Node
@@ -162,7 +162,7 @@ jobs:
 
   build-server-linux:
     needs: [prepare, build-fika-server]
-    if: needs.prepare.outputs.PROCEED == 'true' || needs.prepare.outputs.PROCEED_FIKA == 'true'
+    if: needs.prepare.outputs.PROCEED == 'true'
     runs-on: ubuntu-latest
     env:
       OUTPUT_DIR: spt-server
@@ -279,7 +279,6 @@ jobs:
 
   build-docker-image-multi-arch:
     needs: [prepare, build-server-linux]
-    if: needs.prepare.outputs.PROCEED == 'true' || needs.prepare.outputs.PROCEED_FIKA == 'true'
     runs-on: ubuntu-latest
     env:
       DOCKERHUB_USER: stblog
@@ -374,7 +373,6 @@ jobs:
 
   build-server-windows:
     needs: [prepare, build-server-linux]
-    if: needs.prepare.outputs.PROCEED == 'true' || needs.prepare.outputs.PROCEED_FIKA == 'true'
     runs-on: windows-latest
     env:
       OUTPUT_DIR: spt-server
@@ -392,7 +390,7 @@ jobs:
 
       - name: Clone AirryCo's Server Code
         run: |
-          git clone -b ${{ env.NIGHTLY_BRANCH }} ${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_AIRRYCO }} ${{ env.SOURCECODE_DIR }}
+          git clone -b ${{ env.NIGHTLY_BRANCH }} --depth=1 ${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_AIRRYCO }} ${{ env.SOURCECODE_DIR }}
           cd ${{ env.SOURCECODE_DIR }}
           git lfs pull
         shell: bash
@@ -489,10 +487,9 @@ jobs:
           rm trigger.nightly
           server=${{ needs.prepare.outputs.SPT_SERVER_COMMIT }}
           echo "server=$server" > trigger.nightly
-          rm trigger.fika
           fika=${{ needs.prepare.outputs.FIKA_SERVER_COMMIT }}
-          echo "fika=$fika" > trigger.fika
-          git add trigger.nightly trigger.fika
+          echo "fika=$fika" >> trigger.nightly
+          git add trigger.nightly
           git commit -m "🤖 up to spt-server: \`$server\`, fika-server:\`${fika:0:8}\`."
           git push
         shell: bash

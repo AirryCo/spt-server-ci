@@ -221,7 +221,6 @@ jobs:
 
   build-docker-image-multi-arch:
     needs: [prepare, build-server-linux]
-    if: needs.prepare.outputs.PROCEED == 'true' || needs.prepare.outputs.PROCEED_FIKA == 'true'
     runs-on: ubuntu-latest
     env:
       DOCKERHUB_USER: stblog
@@ -369,7 +368,6 @@ jobs:
 
   build-server-windows:
     needs: [prepare, build-server-linux]
-    if: ${{ needs.prepare.outputs.PROCEED == 'true' }}
     runs-on: windows-latest
     env:
       OUTPUT_DIR: spt-server
@@ -386,7 +384,7 @@ jobs:
 
       - name: Clone AirroCo's Server Code
         run: |
-          git clone -b ${{ env.RELEASE_BRANCH }} ${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_AIRRYCO }} ${{ env.SOURCECODE_DIR }}
+          git clone -b ${{ env.RELEASE_BRANCH }} --depth=1 ${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_AIRRYCO }} ${{ env.SOURCECODE_DIR }}
           cd ${{ env.SOURCECODE_DIR }}
           git lfs pull
         shell: bash
