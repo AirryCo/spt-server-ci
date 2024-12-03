@@ -11,7 +11,7 @@ env:
   SERVER_URL: https://github.com
   REPOSITORY_SPT_SERVER: sp-tarkov/server
   REPOSITORY_SPT_SERVER_AIRRYCO: AirryCo/spt-server
-  NIGHTLY_BRANCH: 3.10.0-DEV
+  NIGHTLY_BRANCH: 3.10.x-DEV
   NIGHTLY_BRANCH_FIKA: spt-3.10
 
 jobs:
@@ -20,6 +20,7 @@ jobs:
     outputs:
       PROCEED: ${{ steps.compare-hash.outputs.PROCEED }}
       PROCEED_FIKA: ${{ steps.compare-fika.outputs.PROCEED }}
+      NIGHTLY_BRANCH_SPT: ${{ steps.get-latest-commit.outputs.NIGHTLY_BRANCH_SPT }}
       BUILT_HASH: ${{ steps.compare-hash.outputs.BUILT_HASH }}
       BUILT_HASH_FIKA: ${{ steps.compare-fika.outputs.BUILT_HASH }}
       SPT_VERSION: ${{ steps.versions.outputs.SPT_VERSION }}
@@ -36,8 +37,11 @@ jobs:
       - name: Get Latest Commit From SPT
         id: get-latest-commit
         run: |
-          SPT_SERVER_LATEST_COMMIT_HASH=$(git ls-remote ${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER }}.git refs/heads/${{ env.NIGHTLY_BRANCH }} | awk '{print $1}')
+          branch_name=$(git ls-remote --heads https://github.com/sp-tarkov/server.git | grep -o 'refs/heads/3\.10\.[0-9]\+-dev' | sed 's|refs/heads/||' | head -n 1)
+          SPT_SERVER_LATEST_COMMIT_HASH=$(git ls-remote ${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER }}.git refs/heads/$branch_name | awk '{print $1}')
           SPT_SERVER_LATEST_COMMIT_HASH=${SPT_SERVER_LATEST_COMMIT_HASH:0:8}
+          echo "👽 NIGHTLY_BRANCH_SPT = $branch_name"
+          echo "👽 NIGHTLY_BRANCH_SPT=$branch_name" >> $GITHUB_OUTPUT
           echo "👽 SPT_SERVER_LATEST_COMMIT_HASH = $SPT_SERVER_LATEST_COMMIT_HASH"
           echo "SPT_SERVER_LATEST_COMMIT_HASH=$SPT_SERVER_LATEST_COMMIT_HASH" >> $GITHUB_OUTPUT
         shell: bash
@@ -82,7 +86,7 @@ jobs:
           SPT_SERVER_COMMIT=${{ steps.get-latest-commit.outputs.SPT_SERVER_LATEST_COMMIT_HASH }}
 
           # Extract versions from core.json
-          wget https://raw.githubusercontent.com/${{ env.REPOSITORY_SPT_SERVER }}/refs/heads/${{ env.NIGHTLY_BRANCH }}/project/assets/configs/core.json
+          wget https://raw.githubusercontent.com/${{ env.REPOSITORY_SPT_SERVER }}/refs/heads/${{ steps.get-latest-commit.outputs.NIGHTLY_BRANCH_SPT }}/project/assets/configs/core.json
           SPT_VERSION=$(jq -r '.sptVersion' core.json)
           EFT_VERSION=$(jq -r '.compatibleTarkovVersion' core.json)
 
@@ -201,7 +205,7 @@ jobs:
         run: |
           cd ${{ env.SOURCECODE_DIR }}
           git pull
-          git fetch -u ${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER }}.git ${{ env.NIGHTLY_BRANCH }}:SPT-${{ env.NIGHTLY_BRANCH }}
+          git fetch -u ${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER }}.git ${{ needs.prepare.outputs.NIGHTLY_BRANCH_SPT }}:SPT-${{ env.NIGHTLY_BRANCH }}
           git merge -m "🤖 Merge branch '${{ env.NIGHTLY_BRANCH }}' from SPT" --no-ff SPT-${{ env.NIGHTLY_BRANCH }}
 
           SPT_SERVER_COMMIT_TIME=$(git log --pretty=format:"%ai" SPT-${{ env.NIGHTLY_BRANCH }} -1)
