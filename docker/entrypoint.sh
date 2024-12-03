@@ -30,8 +30,15 @@ else
   PORT=$backendPort
 fi
 
+if [ -z "$webSocketPingDelayMs" ]; then
+  PINGDELAYMS=90000
+else
+  PINGDELAYMS=$webSocketPingDelayMs
+fi
+
 sed -i "0,/127.0.0.1/s/127.0.0.1/${IP}/" SPT_Data/Server/configs/http.json
-sed -i "s/6969/${PORT}/g" SPT_Data/Server/configs/http.json
+sed -i "s/[0-9]\{1,\},/${PORT},/g" SPT_Data/Server/configs/http.json
+tac SPT_Data/Server/configs/http.json | sed "0,/${PORT},/s/${PORT},/$webSocketPingDelayMs,/" | tac | tee SPT_Data/Server/configs/http.json > /dev/null
 
 chmod +x SPT.Server && ./SPT.Server
 
