@@ -41,7 +41,7 @@ jobs:
           SPT_SERVER_LATEST_COMMIT_HASH=$(git ls-remote ${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER }}.git refs/heads/$branch_name | awk '{print $1}')
           SPT_SERVER_LATEST_COMMIT_HASH=${SPT_SERVER_LATEST_COMMIT_HASH:0:8}
           echo "👽 NIGHTLY_BRANCH_SPT = $branch_name"
-          echo "👽 NIGHTLY_BRANCH_SPT=$branch_name" >> $GITHUB_OUTPUT
+          echo "NIGHTLY_BRANCH_SPT=$branch_name" >> $GITHUB_OUTPUT
           echo "👽 SPT_SERVER_LATEST_COMMIT_HASH = $SPT_SERVER_LATEST_COMMIT_HASH"
           echo "SPT_SERVER_LATEST_COMMIT_HASH=$SPT_SERVER_LATEST_COMMIT_HASH" >> $GITHUB_OUTPUT
         shell: bash
