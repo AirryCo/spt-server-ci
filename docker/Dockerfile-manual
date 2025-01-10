@@ -1,0 +1,25 @@
+FROM node:20.11.1-bullseye AS server-builder
+RUN apt update && apt install -y git git-lfs p7zip-full && \
+    git clone -b 3.10.5 --depth=1 https://github.com/AirryCo/spt-server.git /snapshot && \
+    cd /snapshot && git lfs pull && \
+    cd project && \
+    npm config set registry https://registry.npmmirror.com && npm install && npm run build:release && \
+    rm -rf /var/lib/apt/lists/*
+
+FROM debian:bookworm-slim
+LABEL author="AirryCo <henry@stblog.com.cn>"
+LABEL org.opencontainers.image.description="Single Player Tarkov(SPT) - Server Building Project"
+LABEL org.opencontainers.image.revision="f06b54f1776c1c3e3c257120a3a60c478feda2e1"
+LABEL org.opencontainers.image.source="https://github.com/AirryCo/spt-server"
+LABEL org.opencontainers.image.title="spt-server"
+LABEL org.opencontainers.image.url="https://github.com/AirryCo/spt-server"
+LABEL org.opencontainers.image.version="3.10.5"
+ENV TZ=Asia/Shanghai
+COPY --from=server-builder /snapshot/project/build/ /app/spt-server/
+VOLUME /opt/spt-server
+WORKDIR /opt/spt-server
+EXPOSE 6969
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+ENTRYPOINT ["/entrypoint.sh"]
+
