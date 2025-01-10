@@ -112,11 +112,10 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Clone Fika Server Code
-        run: |
-          git clone -b ${{ env.NIGHTLY_BRANCH_FIKA }} --depth=1 https://github.com/project-fika/Fika-Server.git ${{ env.SOURCECODE_DIR }}
-        shell: bash
+        with:
+          repository: 'project-fika/Fika-Server'
+          ref: '${{ env.NIGHTLY_BRANCH_FIKA }}'
+          fetch-depth: '1'
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -128,7 +127,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: |
-            ${{ env.SOURCECODE_DIR }}/node_modules
+            node_modules
           key: ${{ runner.os }}-npm-dependencies-fika-${{ hashFiles('package.json') }}
           restore-keys: |
             ${{ runner.os }}-npm-dependencies-fika-
@@ -136,14 +135,12 @@ jobs:
       - name: Install NPM Dependencies
         if: steps.cache-npm-dependencies.outputs.cache-hit != 'true'
         run: |
-          cd ${{ env.SOURCECODE_DIR }}
           npm install
         shell: pwsh
 
       - name: Build Fika Server
         id: build-server
         run: |
-          cd ${{ env.SOURCECODE_DIR }}
           npm run build
           mkdir output
           cd output
@@ -161,7 +158,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ${{ steps.filename.outputs.FIKA_ARTIFACT }}
-          path: ${{ env.SOURCECODE_DIR }}/output
+          path: output
           overwrite: true
 
   build-server-linux:
@@ -183,17 +180,17 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          repository: '${{ env.REPOSITORY_SPT_SERVER_AIRRYCO }}'
+          ref: '${{ env.NIGHTLY_BRANCH }}'
+          lfs: 'false'
+          fetch-depth: '0'
+          token: '${{ secrets.AIRRYCO_TOKEN }}'
+
       - name: Setup Git Config
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "bot@github.com"
-
-      - name: Clone AirryCo's Linux Server Code
-        run: |
-          GIT_LFS_SKIP_SMUDGE=1 git clone -b ${{ env.NIGHTLY_BRANCH }} ${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_AIRRYCO }} ${{ env.SOURCECODE_DIR }}
-          cd ${{ env.SOURCECODE_DIR }}
-          git config -f .lfsconfig lfs.url https://${{ secrets.GITEA_PUSH_TOKEN }}:@git.962525.xyz:2096/henry/spt-server.git/info/lfs
-          git lfs pull
         shell: bash
 
       - name: Setup Node
@@ -204,7 +201,8 @@ jobs:
       - name: Merge Server Code From SPT
         id: merge
         run: |
-          cd ${{ env.SOURCECODE_DIR }}
+          git config -f .lfsconfig lfs.url https://${{ secrets.GITEA_PUSH_TOKEN }}:@git.962525.xyz:2096/henry/spt-server.git/info/lfs
+          git lfs pull
           git fetch -u ${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER }}.git ${{ needs.prepare.outputs.NIGHTLY_BRANCH_SPT }}:SPT-${{ env.NIGHTLY_BRANCH }}
           git merge -m "🤖 Merge branch '${{ env.NIGHTLY_BRANCH }}' from SPT" --no-ff SPT-${{ env.NIGHTLY_BRANCH }}
 
@@ -216,8 +214,6 @@ jobs:
       - name: Runner Debug Information
         id: debug-info
         run: |
-          cp -v ${{ env.SOURCECODE_DIR }}/project/package.json .
-          cd ${{ env.SOURCECODE_DIR }}
           echo "git version: $(git --version)"
           echo "git lfs version: $(git-lfs --version)"
           echo "node.js version: $(node --version)"
@@ -233,22 +229,22 @@ jobs:
         uses: actions/cache@v4
         with:
           path: |
-            ${{ env.SOURCECODE_DIR }}/project/node_modules
-          key: ${{ runner.os }}-npm-dependencies-${{ hashFiles('package.json') }}
+            project/node_modules
+          key: ${{ runner.os }}-npm-dependencies-${{ hashFiles('project/package.json') }}
           restore-keys: |
             ${{ runner.os }}-npm-dependencies-
 
       - name: Install NPM Dependencies
         if: steps.cache-npm-dependencies.outputs.cache-hit != 'true'
         run: |
-          cd ${{ env.SOURCECODE_DIR }}/project
+          cd project
           npm install
         shell: bash
 
       - name: Build Linux Server
         id: build-server
         run: |
-          cd ${{ env.SOURCECODE_DIR }}/project
+          cd project
           npm run build:release
           ls -l build
           mv build ${{ env.OUTPUT_DIR }}
@@ -268,13 +264,12 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ${{ steps.filename.outputs.LINUX_ARTIFACT }}
-          path: ${{ env.SOURCECODE_DIR }}/project/${{ env.OUTPUT_DIR }}
+          path: project/${{ env.OUTPUT_DIR }}
           overwrite: true
           retention-days: 1
 
       - name: Push Linux Server Code
         run: |
-          cd ${{ env.SOURCECODE_DIR }}
           git pull
           REMOTE_URL="https://AirryCo:${{ secrets.AIRRYCO_TOKEN }}@github.com/${{ env.REPOSITORY_SPT_SERVER_AIRRYCO }}.git"
           git remote set-url origin "$REMOTE_URL"
@@ -399,14 +394,13 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Clone AirryCo's Server Code
-        run: |
-          GIT_LFS_SKIP_SMUDGE=1 git clone -b ${{ env.NIGHTLY_BRANCH }} --depth=1 ${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_AIRRYCO }} ${{ env.SOURCECODE_DIR }}
-          cd ${{ env.SOURCECODE_DIR }}
-          git config -f .lfsconfig lfs.url https://${{ secrets.GITEA_PUSH_TOKEN }}:@git.962525.xyz:2096/henry/spt-server.git/info/lfs
-          git lfs pull
-        shell: bash
+        with:
+          repository: '${{ env.REPOSITORY_SPT_SERVER_AIRRYCO }}'
+          ref: '${{ env.NIGHTLY_BRANCH }}'
+          lfs: 'false'
+          fetch-depth: '1'
+          token: '${{ secrets.AIRRYCO_TOKEN }}'
+          path: '${{ env.SOURCECODE_DIR }}'
 
       # Modify the JSON file with PowerShell
       - name: Modify JSON file with PowerShell
@@ -461,7 +455,10 @@ jobs:
       - name: Build Windows Server
         id: build-server
         run: |
-          cd ${{ env.SOURCECODE_DIR }}/project
+          cd ${{ env.SOURCECODE_DIR }}
+          git config -f .lfsconfig lfs.url https://${{ secrets.GITEA_PUSH_TOKEN }}:@git.962525.xyz:2096/henry/spt-server.git/info/lfs
+          git lfs pull
+          cd project
           npm run build:release
           ls -l build
           mv build ${{ env.OUTPUT_DIR }}
