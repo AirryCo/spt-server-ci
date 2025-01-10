@@ -1,6 +1,6 @@
 FROM node:20.11.1-bullseye AS server-builder
 RUN apt update && apt install -y git git-lfs p7zip-full && \
-    git clone -b master --depth=1 https://github.com/AirryCo/spt-server.git /snapshot && \
+    git clone -b 3.10.2 --depth=1 https://github.com/AirryCo/spt-server.git /snapshot && \
     cd /snapshot && git lfs pull && \
     cd project && \
     npm install && npm run build:release && \
