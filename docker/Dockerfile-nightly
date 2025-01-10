@@ -1,7 +1,7 @@
 FROM node:20.11.1-bullseye AS server-builder
 RUN apt update && apt install -y git git-lfs p7zip-full && \
-    git clone -b 3.10.x-DEV --depth=1 https://github.com/AirryCo/spt-server.git /snapshot && \
-    cd /snapshot && git lfs pull && \
+    GIT_LFS_SKIP_SMUDGE=1 git clone -b 4.0.x-DEV --depth=1 https://github.com/AirryCo/spt-server.git /snapshot && \
+    cd /snapshot && git config -f .lfsconfig lfs.url https://$SECRET_KEY:@git.962525.xyz:2096/henry/spt-server.git/info/lfs && git lfs pull && \
     cd project && \
     npm install && npm run build:release && \
     rm -rf /var/lib/apt/lists/*

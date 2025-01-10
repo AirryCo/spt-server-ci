@@ -11,8 +11,8 @@ env:
   SERVER_URL: https://github.com
   REPOSITORY_SPT_SERVER: sp-tarkov/server
   REPOSITORY_SPT_SERVER_AIRRYCO: AirryCo/spt-server
-  NIGHTLY_BRANCH: 3.10.x-DEV
-  NIGHTLY_BRANCH_FIKA: main
+  NIGHTLY_BRANCH: 4.0.x-DEV
+  NIGHTLY_BRANCH_FIKA: dev-4.0
 
 jobs:
   prepare:
@@ -37,7 +37,7 @@ jobs:
       - name: Get Latest Commit From SPT
         id: get-latest-commit
         run: |
-          branch_name=$(git ls-remote --heads https://github.com/sp-tarkov/server.git | grep -o 'refs/heads/3\.10\.[0-9]\+-dev' | sed 's|refs/heads/||' | head -n 1)
+          branch_name=$(git ls-remote --heads https://github.com/sp-tarkov/server.git | grep -o 'refs/heads/4.0.0-DEV' | sed 's|refs/heads/||' | head -n 1)
           SPT_SERVER_LATEST_COMMIT_HASH=$(git ls-remote ${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER }}.git refs/heads/$branch_name | awk '{print $1}')
           SPT_SERVER_LATEST_COMMIT_HASH=${SPT_SERVER_LATEST_COMMIT_HASH:0:8}
           echo "👽 NIGHTLY_BRANCH_SPT = $branch_name"
@@ -121,7 +121,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20.11.1
+          node-version: 22.12.0
 
       - name: Cache NPM Dependencies
         id: cache-npm-dependencies
@@ -190,21 +190,21 @@ jobs:
 
       - name: Clone AirryCo's Linux Server Code
         run: |
-          git clone -b ${{ env.NIGHTLY_BRANCH }} ${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_AIRRYCO }} ${{ env.SOURCECODE_DIR }}
+          GIT_LFS_SKIP_SMUDGE=1 git clone -b ${{ env.NIGHTLY_BRANCH }} ${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_AIRRYCO }} ${{ env.SOURCECODE_DIR }}
           cd ${{ env.SOURCECODE_DIR }}
+          git config -f .lfsconfig lfs.url https://${{ secrets.GITEA_PUSH_TOKEN }}:@git.962525.xyz:2096/henry/spt-server.git/info/lfs
           git lfs pull
         shell: bash
 
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20.11.1
+          node-version: 22.12.0
 
       - name: Merge Server Code From SPT
         id: merge
         run: |
           cd ${{ env.SOURCECODE_DIR }}
-          git pull
           git fetch -u ${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER }}.git ${{ needs.prepare.outputs.NIGHTLY_BRANCH_SPT }}:SPT-${{ env.NIGHTLY_BRANCH }}
           git merge -m "🤖 Merge branch '${{ env.NIGHTLY_BRANCH }}' from SPT" --no-ff SPT-${{ env.NIGHTLY_BRANCH }}
 
@@ -242,7 +242,7 @@ jobs:
         if: steps.cache-npm-dependencies.outputs.cache-hit != 'true'
         run: |
           cd ${{ env.SOURCECODE_DIR }}/project
-          npm install --legacy-peer-deps
+          npm install
         shell: bash
 
       - name: Build Linux Server
@@ -278,7 +278,8 @@ jobs:
           git pull
           REMOTE_URL="https://AirryCo:${{ secrets.AIRRYCO_TOKEN }}@github.com/${{ env.REPOSITORY_SPT_SERVER_AIRRYCO }}.git"
           git remote set-url origin "$REMOTE_URL"
-          git push
+          git config -f .lfsconfig lfs.url https://${{ secrets.GITEA_PUSH_TOKEN }}:@git.962525.xyz:2096/henry/spt-server.git/info/lfs
+          git push -u origin ${{ env.NIGHTLY_BRANCH }}
         shell: bash
 
   build-docker-image-multi-arch:
@@ -356,6 +357,8 @@ jobs:
           context: ./docker
           file: ./docker/Dockerfile-nightly
           push: true
+          build-args: |
+            SECRET_KEY=${{ secrets.GITEA_PUSH_TOKEN }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: |
             ${{ steps.meta.outputs.labels }}
@@ -370,6 +373,8 @@ jobs:
           context: ./docker
           file: ./docker/Dockerfile-nightly-fika
           push: true
+          build-args: |
+            SECRET_KEY=${{ secrets.GITEA_PUSH_TOKEN }}
           tags: ${{ steps.meta-fika.outputs.tags }}
           labels: |
             ${{ steps.meta-fika.outputs.labels }}
@@ -397,8 +402,9 @@ jobs:
 
       - name: Clone AirryCo's Server Code
         run: |
-          git clone -b ${{ env.NIGHTLY_BRANCH }} --depth=1 ${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_AIRRYCO }} ${{ env.SOURCECODE_DIR }}
+          GIT_LFS_SKIP_SMUDGE=1 git clone -b ${{ env.NIGHTLY_BRANCH }} --depth=1 ${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_AIRRYCO }} ${{ env.SOURCECODE_DIR }}
           cd ${{ env.SOURCECODE_DIR }}
+          git config -f .lfsconfig lfs.url https://${{ secrets.GITEA_PUSH_TOKEN }}:@git.962525.xyz:2096/henry/spt-server.git/info/lfs
           git lfs pull
         shell: bash
 
@@ -419,7 +425,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20.11.1
+          node-version: 22.12.0
 
       - name: Runner Debug Information
         id: debug-info
@@ -449,7 +455,7 @@ jobs:
         if: steps.cache-npm-dependencies.outputs.cache-hit != 'true'
         run: |
           cd ${{ env.SOURCECODE_DIR }}/project
-          npm install --legacy-peer-deps
+          npm install
         shell: pwsh
 
       - name: Build Windows Server
