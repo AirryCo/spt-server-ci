@@ -1,4 +1,4 @@
-name: SPT-Server Build Release
+name: SPT-Server Release Manual
 
 on:
   push:

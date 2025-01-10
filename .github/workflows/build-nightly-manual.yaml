@@ -1,4 +1,4 @@
-name: SPT-Server Manual Build
+name: SPT-Server Nightly Manual
 
 on:
   push:

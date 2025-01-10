@@ -1,4 +1,4 @@
-name: SPT-Server Build Nightly
+name: SPT-Server Nightly
 
 on:
   schedule:
