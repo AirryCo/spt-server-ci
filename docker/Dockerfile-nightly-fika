@@ -8,7 +8,7 @@ RUN apk add --no-cache git unzip && \
 FROM node:22.12.0-bullseye AS server-builder
 RUN apt update && apt install -y git git-lfs p7zip-full && \
     GIT_LFS_SKIP_SMUDGE=1 git clone -b 4.0.x-DEV --depth=1 https://github.com/AirryCo/spt-server.git /snapshot && \
-    cd /snapshot && git config -f .lfsconfig lfs.url https://$GITEA_TOKEN:@$GITEA_URL/henry/spt-server.git/info/lfs && git lfs pull && \
+    cd /snapshot && git config -f .lfsconfig lfs.url https://git.rui.he.cn:3000/henry/spt-server.git/info/lfs && git lfs pull && \
     cd project && \
     npm install && npm run build:release && \
     rm -rf /var/lib/apt/lists/*

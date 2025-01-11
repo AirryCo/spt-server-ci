@@ -103,8 +103,6 @@ jobs:
     needs: prepare
     if: needs.prepare.outputs.PROCEED == 'true'
     runs-on: ubuntu-latest
-    env:
-      SOURCECODE_DIR: ${{ github.workspace }}/fika-server
 
     outputs:
       FIKA_ARTIFACT: ${{ steps.filename.outputs.FIKA_ARTIFACT }}
@@ -167,7 +165,6 @@ jobs:
     runs-on: ubuntu-latest
     env:
       OUTPUT_DIR: spt-server
-      SOURCECODE_DIR: ${{ github.workspace }}/code
 
     outputs:
       SPT_SERVER_COMMIT_TIME: ${{ steps.merge.outputs.SPT_SERVER_COMMIT_TIME }}
@@ -201,7 +198,7 @@ jobs:
       - name: Merge Server Code From SPT
         id: merge
         run: |
-          git config -f .lfsconfig lfs.url https://${{ secrets.GITEA_PUSH_TOKEN }}:@${{ secrets.GITEA_URL }}/henry/spt-server.git/info/lfs
+          git config -f .lfsconfig lfs.url https://${{ secrets.GITEA_PUSH_TOKEN }}:@git.rui.he.cn:3000/henry/spt-server.git/info/lfs
           git lfs pull
           git fetch -u ${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER }}.git ${{ needs.prepare.outputs.NIGHTLY_BRANCH_SPT }}:SPT-${{ env.NIGHTLY_BRANCH }}
           git merge -m "🤖 Merge branch '${{ env.NIGHTLY_BRANCH }}' from SPT" --no-ff SPT-${{ env.NIGHTLY_BRANCH }}
@@ -273,7 +270,7 @@ jobs:
           git pull
           REMOTE_URL="https://AirryCo:${{ secrets.AIRRYCO_TOKEN }}@github.com/${{ env.REPOSITORY_SPT_SERVER_AIRRYCO }}.git"
           git remote set-url origin "$REMOTE_URL"
-          git config -f .lfsconfig lfs.url https://${{ secrets.GITEA_PUSH_TOKEN }}:@${{ secrets.GITEA_URL }}/henry/spt-server.git/info/lfs
+          git config -f .lfsconfig lfs.url https://${{ secrets.GITEA_PUSH_TOKEN }}:@git.rui.he.cn:3000/henry/spt-server.git/info/lfs
           git push -u origin ${{ env.NIGHTLY_BRANCH }}
         shell: bash
 
@@ -352,9 +349,6 @@ jobs:
           context: ./docker
           file: ./docker/Dockerfile-nightly
           push: true
-          build-args: |
-            GITEA_TOKEN=${{ secrets.GITEA_PUSH_TOKEN }}
-            GITEA_URL=${{ secrets.GITEA_URL }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: |
             ${{ steps.meta.outputs.labels }}
@@ -369,9 +363,6 @@ jobs:
           context: ./docker
           file: ./docker/Dockerfile-nightly-fika
           push: true
-          build-args: |
-            GITEA_TOKEN=${{ secrets.GITEA_PUSH_TOKEN }}
-            GITEA_URL=${{ secrets.GITEA_URL }}
           tags: ${{ steps.meta-fika.outputs.tags }}
           labels: |
             ${{ steps.meta-fika.outputs.labels }}
@@ -385,7 +376,6 @@ jobs:
     runs-on: windows-latest
     env:
       OUTPUT_DIR: spt-server
-      SOURCECODE_DIR: c:/snapshot
     outputs:
       SPT_SERVER_COMMIT_TIME: ${{ steps.merge.outputs.SPT_SERVER_COMMIT_TIME }}
       WIN_COMMIT_ID: ${{ steps.debug-info.outputs.COMMIT_ID }}
@@ -402,19 +392,18 @@ jobs:
           lfs: 'false'
           fetch-depth: '1'
           token: '${{ secrets.AIRRYCO_TOKEN }}'
-          path: '${{ env.SOURCECODE_DIR }}'
 
       # Modify the JSON file with PowerShell
       - name: Modify JSON file with PowerShell
         run: |
-          cd ${{ env.SOURCECODE_DIR }}/project/assets/configs
+          cd project/assets/configs
           $json = Get-Content -Path "core.json" | ConvertFrom-Json
           $json.projectName = "AirryCo's SPT Windows"
           $json | ConvertTo-Json -Depth 10 | Set-Content -Path "core.json"
         shell: pwsh
       - name: Replace serverExeName
         run: |
-          cd ${{ env.SOURCECODE_DIR }}/project
+          cd project
           sed -i 's/SPT.Server/SPT.Server.exe/g' gulpfile.mjs
         shell: bash
 
@@ -426,8 +415,6 @@ jobs:
       - name: Runner Debug Information
         id: debug-info
         run: |
-          cp -v ${{ env.SOURCECODE_DIR }}/project/package.json .
-          cd ${{ env.SOURCECODE_DIR }}
           echo "git version: $(git --version)"
           echo "git lfs version: $(git-lfs --version)"
           echo "node.js version: $(node --version)"
@@ -442,23 +429,22 @@ jobs:
         uses: actions/cache@v4
         with:
           path: |
-            ${{ env.SOURCECODE_DIR }}/project/node_modules
-          key: ${{ runner.os }}-npm-dependencies-${{ hashFiles('package.json') }}
+            project/node_modules
+          key: ${{ runner.os }}-npm-dependencies-${{ hashFiles('project/package.json') }}
           restore-keys: |
             ${{ runner.os }}-npm-dependencies-
 
       - name: Install NPM Dependencies
         if: steps.cache-npm-dependencies.outputs.cache-hit != 'true'
         run: |
-          cd ${{ env.SOURCECODE_DIR }}/project
+          cd project
           npm install
         shell: pwsh
 
       - name: Build Windows Server
         id: build-server
         run: |
-          cd ${{ env.SOURCECODE_DIR }}
-          git config -f .lfsconfig lfs.url https://${{ secrets.GITEA_PUSH_TOKEN }}:@${{ secrets.GITEA_URL }}/henry/spt-server.git/info/lfs
+          git config -f .lfsconfig lfs.url https://${{ secrets.GITEA_PUSH_TOKEN }}:@git.rui.he.cn:3000/henry/spt-server.git/info/lfs
           git lfs pull
           cd project
           npm run build:release
@@ -480,7 +466,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ${{ steps.filename.outputs.WIN_ARTIFACT }}
-          path: ${{ env.SOURCECODE_DIR }}/project/${{ env.OUTPUT_DIR }}
+          path: project/${{ env.OUTPUT_DIR }}
           overwrite: true
 
   update-trigger-and-push:
