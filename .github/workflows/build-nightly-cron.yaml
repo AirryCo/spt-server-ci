@@ -201,7 +201,7 @@ jobs:
       - name: Merge Server Code From SPT
         id: merge
         run: |
-          git config -f .lfsconfig lfs.url https://${{ secrets.GITEA_PUSH_TOKEN }}:@git.962525.xyz:2096/henry/spt-server.git/info/lfs
+          git config -f .lfsconfig lfs.url https://${{ secrets.GITEA_PUSH_TOKEN }}:@${{ secrets.GITEA_URL }}/henry/spt-server.git/info/lfs
           git lfs pull
           git fetch -u ${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER }}.git ${{ needs.prepare.outputs.NIGHTLY_BRANCH_SPT }}:SPT-${{ env.NIGHTLY_BRANCH }}
           git merge -m "🤖 Merge branch '${{ env.NIGHTLY_BRANCH }}' from SPT" --no-ff SPT-${{ env.NIGHTLY_BRANCH }}
@@ -273,7 +273,7 @@ jobs:
           git pull
           REMOTE_URL="https://AirryCo:${{ secrets.AIRRYCO_TOKEN }}@github.com/${{ env.REPOSITORY_SPT_SERVER_AIRRYCO }}.git"
           git remote set-url origin "$REMOTE_URL"
-          git config -f .lfsconfig lfs.url https://${{ secrets.GITEA_PUSH_TOKEN }}:@git.962525.xyz:2096/henry/spt-server.git/info/lfs
+          git config -f .lfsconfig lfs.url https://${{ secrets.GITEA_PUSH_TOKEN }}:@${{ secrets.GITEA_URL }}/henry/spt-server.git/info/lfs
           git push -u origin ${{ env.NIGHTLY_BRANCH }}
         shell: bash
 
@@ -353,7 +353,8 @@ jobs:
           file: ./docker/Dockerfile-nightly
           push: true
           build-args: |
-            SECRET_KEY=${{ secrets.GITEA_PUSH_TOKEN }}
+            GITEA_TOKEN=${{ secrets.GITEA_PUSH_TOKEN }}
+            GITEA_URL=${{ secrets.GITEA_URL }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: |
             ${{ steps.meta.outputs.labels }}
@@ -369,7 +370,8 @@ jobs:
           file: ./docker/Dockerfile-nightly-fika
           push: true
           build-args: |
-            SECRET_KEY=${{ secrets.GITEA_PUSH_TOKEN }}
+            GITEA_TOKEN=${{ secrets.GITEA_PUSH_TOKEN }}
+            GITEA_URL=${{ secrets.GITEA_URL }}
           tags: ${{ steps.meta-fika.outputs.tags }}
           labels: |
             ${{ steps.meta-fika.outputs.labels }}
@@ -456,7 +458,7 @@ jobs:
         id: build-server
         run: |
           cd ${{ env.SOURCECODE_DIR }}
-          git config -f .lfsconfig lfs.url https://${{ secrets.GITEA_PUSH_TOKEN }}:@git.962525.xyz:2096/henry/spt-server.git/info/lfs
+          git config -f .lfsconfig lfs.url https://${{ secrets.GITEA_PUSH_TOKEN }}:@${{ secrets.GITEA_URL }}/henry/spt-server.git/info/lfs
           git lfs pull
           cd project
           npm run build:release
