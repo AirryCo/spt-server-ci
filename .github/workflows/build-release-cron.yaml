@@ -544,9 +544,9 @@ jobs:
 
             Tarkov: ***${{ needs.prepare.outputs.EFT_VERSION }}***
 
-            [SPT/Server](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER }}) commit hash: [${{ needs.prepare.outputs.SPT_SERVER_COMMIT }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER }}/src/commit/${{ needs.prepare.outputs.SPT_SERVER_COMMIT }}), commit time: **${{ needs.prepare.outputs.SPT_SERVER_COMMIT_TIME }}**
+            [SPT/Server](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER }}) commit hash: [${{ needs.prepare.outputs.SPT_SERVER_COMMIT }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER }}/tree/${{ needs.prepare.outputs.SPT_SERVER_COMMIT }}), commit time: **${{ needs.prepare.outputs.SPT_SERVER_COMMIT_TIME }}**
 
-            [AirryCo/spt-server](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_AIRRYCO }}) commit: [${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_AIRRYCO }}/src/commit/${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID }})
+            [AirryCo/spt-server](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_AIRRYCO }}) commit: [${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_AIRRYCO }}/tree/${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID }})
  
             Fika-Server: [${{ needs.prepare.outputs.TARGET_TAG_FIKA }}](https://github.com/project-fika/Fika-Server/tree/${{ needs.prepare.outputs.TARGET_TAG_FIKA }})
             
@@ -593,9 +593,9 @@ jobs:
 
             Tarkov: ***${{ needs.prepare.outputs.EFT_VERSION }}***
 
-            [SPT/Server](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER }}) commit hash: [${{ needs.prepare.outputs.SPT_SERVER_COMMIT }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER }}/src/commit/${{ needs.prepare.outputs.SPT_SERVER_COMMIT }}), commit time: **${{ needs.prepare.outputs.SPT_SERVER_COMMIT_TIME }}**
+            [SPT/Server](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER }}) commit hash: [${{ needs.prepare.outputs.SPT_SERVER_COMMIT }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER }}/tree/${{ needs.prepare.outputs.SPT_SERVER_COMMIT }}), commit time: **${{ needs.prepare.outputs.SPT_SERVER_COMMIT_TIME }}**
 
-            [AirryCo/spt-server](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_AIRRYCO }}) commit: [${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_AIRRYCO }}/src/commit/${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID }})
+            [AirryCo/spt-server](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_AIRRYCO }}) commit: [${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_AIRRYCO }}/tree/${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID }})
 
             Fika-Server: [${{ needs.prepare.outputs.TARGET_TAG_FIKA }}](https://github.com/project-fika/Fika-Server/tree/${{ needs.prepare.outputs.TARGET_TAG_FIKA }})
 
