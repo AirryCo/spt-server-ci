@@ -342,20 +342,6 @@ jobs:
           username: ${{ secrets.ALIYUN_REGISTRY_USER }}
           password: ${{ secrets.ALIYUN_REGISTRY_TOKEN }}
 
-      - name: Build and Push
-        id: build-and-push
-        uses: docker/build-push-action@v6
-        with:
-          context: ./docker
-          file: ./docker/Dockerfile-nightly
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: |
-            ${{ steps.meta.outputs.labels }}
-            org.opencontainers.image.source=https://github.com/AirryCo/spt-server
-            org.opencontainers.image.url=https://github.com/AirryCo/spt-server
-            org.opencontainers.image.revision=${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID_WHOLE }}
-          platforms: linux/amd64,linux/arm64
       - name: Build and Push with Fika Server
         id: build-and-push-with-fika
         uses: docker/build-push-action@v6
@@ -366,6 +352,20 @@ jobs:
           tags: ${{ steps.meta-fika.outputs.tags }}
           labels: |
             ${{ steps.meta-fika.outputs.labels }}
+            org.opencontainers.image.source=https://github.com/AirryCo/spt-server
+            org.opencontainers.image.url=https://github.com/AirryCo/spt-server
+            org.opencontainers.image.revision=${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID_WHOLE }}
+          platforms: linux/amd64,linux/arm64
+      - name: Build and Push
+        id: build-and-push
+        uses: docker/build-push-action@v6
+        with:
+          context: ./docker
+          file: ./docker/Dockerfile-nightly
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: |
+            ${{ steps.meta.outputs.labels }}
             org.opencontainers.image.source=https://github.com/AirryCo/spt-server
             org.opencontainers.image.url=https://github.com/AirryCo/spt-server
             org.opencontainers.image.revision=${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID_WHOLE }}
