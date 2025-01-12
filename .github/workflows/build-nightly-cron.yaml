@@ -142,7 +142,7 @@ jobs:
           npm run build
           mkdir output
           cd output
-          unzip ../dist/fika-server.zip
+          unzip ../dist/*.zip
         shell: bash
 
       - name: Generate Artifact File Name
@@ -475,8 +475,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
       - name: Update trigger and Push to GitHub
         run: |
           git config user.name "github-actions[bot]"
@@ -487,9 +485,12 @@ jobs:
           echo "server=$server" > trigger.nightly
           fika=${{ needs.prepare.outputs.FIKA_SERVER_COMMIT }}
           echo "fika=$fika" >> trigger.nightly
-          git add trigger.nightly
-          git commit -m "🤖 up to spt-server: \`$server\`, fika-server:\`${fika:0:8}\`."
-          git push
+          changes=$(git status --porcelain)
+          if [ -n "$changes" ]; then
+            git add trigger.nightly
+            git commit -m "🤖 auto built spt-server: \`$server\`, fika-server:\`${fika:0:8}\`."
+            git push
+          fi
         shell: bash
 
   assemble-and-publish:

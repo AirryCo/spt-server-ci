@@ -487,9 +487,12 @@ jobs:
           rm trigger.release
           echo "server=${{ needs.prepare.outputs.TARGET_TAG }}" > trigger.release
           echo "fika=${{ needs.prepare.outputs.TARGET_TAG_FIKA }}" >> trigger.release
-          git add trigger.release
-          git commit -m "🤖 bump to \`${{ needs.prepare.outputs.TARGET_TAG }}\`."
-          git push
+          changes=$(git status --porcelain)
+          if [ -n "$changes" ]; then
+            git add trigger.release
+            git commit -m "🤖 bump to \`${{ needs.prepare.outputs.TARGET_TAG }}\`."
+            git push
+          fi
         shell: bash
 
       - name: Download Windows Artifact
