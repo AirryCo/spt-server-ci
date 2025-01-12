@@ -32,8 +32,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
       - name: Get Latest Commit From SPT
         id: get-latest-commit
         run: |
@@ -48,6 +46,7 @@ jobs:
       - name: Compare Hashes
         id: compare-hash
         run: |
+          git pull
           source trigger.nightly
           server_last_built_hash=${server:0:8}
           server_latest_commit_hash=${{ steps.get-latest-commit.outputs.SPT_SERVER_LATEST_COMMIT_HASH }}
