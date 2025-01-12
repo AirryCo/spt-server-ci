@@ -3,7 +3,7 @@ RUN apk add --no-cache git unzip && \
     git clone -b dev-4.0 --depth=1 https://github.com/project-fika/Fika-Server.git /fika-server && \
     cd /fika-server && \
     npm install && npm run build && \
-    mkdir output && cd output && unzip /fika-server/dist/fika-server.zip
+    mkdir output && cd output && unzip /fika-server/dist/*.zip
 
 FROM node:22.12.0-bullseye AS server-builder
 RUN apt update && apt install -y git git-lfs p7zip-full && \
