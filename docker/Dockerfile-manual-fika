@@ -1,6 +1,6 @@
 FROM node:20.11.1-alpine AS fika-builder
 RUN apk add --no-cache git unzip && \
-    git clone -b 2.3.6 --depth=1 https://github.com/project-fika/Fika-Server.git /fika-server && \
+    git clone -b v2.3.6 --depth=1 https://github.com/project-fika/Fika-Server.git /fika-server && \
     cd /fika-server && \
     npm install && npm run build && \
     mkdir output && cd output && unzip /fika-server/dist/*.zip
