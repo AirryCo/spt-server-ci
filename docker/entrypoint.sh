@@ -36,9 +36,11 @@ else
   PINGDELAYMS=$webSocketPingDelayMs
 fi
 
-sed -i "0,/127.0.0.1/s/127.0.0.1/${IP}/" SPT_Data/Server/configs/http.json
-sed -i "s/[0-9]\{1,\},/${PORT},/g" SPT_Data/Server/configs/http.json
-tac SPT_Data/Server/configs/http.json | sed "0,/${PORT},/s/${PORT},/$PINGDELAYMS,/" | tac | tee SPT_Data/Server/configs/http.json > /dev/null
+sed -Ei 's/"ip": "(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)",/"ip": "0.0.0.0",/g' SPT_Data/Server/configs/http.json
+sed -Ei 's/"port": ([0-9]|[1-9][1-9]{1,3}|[1-5][0-9]{4}|6[1-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5]),/"port": ${PORT},/g' SPT_Data/Server/configs/http.json
+sed -Ei 's/"backendIp": "(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)",/"backendIp": "${IP}",/g' SPT_Data/Server/configs/http.json
+sed -Ei 's/"backendPort": ([0-9]|[1-9][1-9]{1,3}|[1-5][0-9]{4}|6[1-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5]),/"backendPort": ${PORT},/g' SPT_Data/Server/configs/http.json
+sed -Ei 's/"webSocketPingDelayMs": ([0-9]{1,}),/"webSocketPingDelayMs": ${PINGDELAYMS},/g' SPT_Data/Server/configs/http.json
 
 chmod +x SPT.Server && ./SPT.Server
 
