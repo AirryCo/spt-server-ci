@@ -197,9 +197,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Git pull
-        run: |
-          git pull
 
       # docker
       - name: Extract metadata for Docker with release version
@@ -284,7 +281,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: ./docker
-          file: ./docker/Dockerfile-fika
+          file: ./docker/Dockerfile-manual-fika
           push: true
           tags: ${{ steps.meta-fika.outputs.tags }}
           labels: |
@@ -297,7 +294,7 @@ jobs:
         if: ${{ !contains(needs.prepare.outputs.TARGET_TAG, 'BEM') }}
         uses: docker/build-push-action@v6
         with:
-          context: ./docker
+          context: ./docker/Dockerfile-manual
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: |
@@ -312,7 +309,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: ./docker
-          file: ./docker/Dockerfile-fika
+          file: ./docker/Dockerfile-manual-fika
           push: true
           tags: ${{ steps.meta-bem-fika.outputs.tags }}
           labels: |
@@ -325,7 +322,7 @@ jobs:
         if: ${{ contains(needs.prepare.outputs.TARGET_TAG, 'BEM') }}
         uses: docker/build-push-action@v6
         with:
-          context: ./docker
+          context: ./docker/Dockerfile-manual
           push: true
           tags: ${{ steps.meta-bem.outputs.tags }}
           labels: |
@@ -441,25 +438,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - name: Setup Git Config
-        run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "bot@github.com"
-      - name: Push Code To GitHub
-        run: |
-          git pull
-          rm trigger.release
-          echo "server=${{ needs.prepare.outputs.TARGET_TAG }}" > trigger.release
-          echo "fika=${{ needs.prepare.outputs.TARGET_TAG_FIKA }}" >> trigger.release
-          changes=$(git status --porcelain)
-          if [ -n "$changes" ]; then
-            git add trigger.release
-            git commit -m "🤖 bump to \`${{ needs.prepare.outputs.TARGET_TAG }}\`."
-            git push
-          fi
-        shell: bash
 
       - name: Download Windows Artifact
         uses: actions/download-artifact@v4
