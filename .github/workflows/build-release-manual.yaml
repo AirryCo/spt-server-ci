@@ -294,7 +294,8 @@ jobs:
         if: ${{ !contains(needs.prepare.outputs.TARGET_TAG, 'BEM') }}
         uses: docker/build-push-action@v6
         with:
-          context: ./docker/Dockerfile-manual
+          context: ./docker
+          file: ./docker/Dockerfile-manual
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: |
@@ -322,7 +323,8 @@ jobs:
         if: ${{ contains(needs.prepare.outputs.TARGET_TAG, 'BEM') }}
         uses: docker/build-push-action@v6
         with:
-          context: ./docker/Dockerfile-manual
+          context: ./docker
+          file: ./docker/Dockerfile-manual
           push: true
           tags: ${{ steps.meta-bem.outputs.tags }}
           labels: |
