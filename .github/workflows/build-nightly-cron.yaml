@@ -11,8 +11,8 @@ env:
   SERVER_URL: https://github.com
   REPOSITORY_SPT_SERVER: sp-tarkov/server
   REPOSITORY_SPT_SERVER_AIRRYCO: AirryCo/spt-server
-  NIGHTLY_BRANCH: 4.0.x-DEV
-  NIGHTLY_BRANCH_FIKA: dev-4.0
+  NIGHTLY_BRANCH: 3.11.x-DEV
+  NIGHTLY_BRANCH_FIKA: dev-3.11
 
 jobs:
   prepare:
@@ -35,7 +35,7 @@ jobs:
       - name: Get Latest Commit From SPT
         id: get-latest-commit
         run: |
-          branch_name=$(git ls-remote --heads https://github.com/sp-tarkov/server.git | grep -o 'refs/heads/4.0.0-DEV' | sed 's|refs/heads/||' | head -n 1)
+          branch_name=$(git ls-remote --heads https://github.com/sp-tarkov/server.git | grep -o 'refs/heads/3.11.0-dev' | sed 's|refs/heads/||' | head -n 1)
           SPT_SERVER_LATEST_COMMIT_HASH=$(git ls-remote ${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER }}.git refs/heads/$branch_name | awk '{print $1}')
           SPT_SERVER_LATEST_COMMIT_HASH=${SPT_SERVER_LATEST_COMMIT_HASH:0:8}
           echo "👽 NIGHTLY_BRANCH_SPT = $branch_name"
