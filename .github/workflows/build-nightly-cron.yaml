@@ -12,7 +12,7 @@ env:
   REPOSITORY_SPT_SERVER: sp-tarkov/server
   REPOSITORY_SPT_SERVER_AIRRYCO: AirryCo/spt-server
   NIGHTLY_BRANCH: 3.11.x-DEV
-  NIGHTLY_BRANCH_FIKA: dev-3.11
+  NIGHTLY_BRANCH_FIKA: main
 
 jobs:
   prepare:
