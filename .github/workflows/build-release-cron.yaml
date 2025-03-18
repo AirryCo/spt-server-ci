@@ -166,7 +166,7 @@ jobs:
         with:
           path: |
             project/node_modules
-          key: ${{ runner.os }}-npm-dependencies-${{ hashFiles('package.json') }}
+          key: ${{ runner.os }}-npm-dependencies-${{ hashFiles('project/package.json') }}
           restore-keys: |
             ${{ runner.os }}-npm-dependencies-
 
@@ -375,7 +375,7 @@ jobs:
         with:
           path: |
             project/node_modules
-          key: ${{ runner.os }}-npm-dependencies-${{ hashFiles('package.json') }}
+          key: ${{ runner.os }}-npm-dependencies-${{ hashFiles('project/package.json') }}
           restore-keys: |
             ${{ runner.os }}-npm-dependencies-
 
@@ -389,6 +389,8 @@ jobs:
       - name: Build Windows Server
         id: build-server
         run: |
+          git config -f .lfsconfig lfs.url https://${{ secrets.GITEA_PUSH_TOKEN }}:@git.rui.he.cn:3000/henry/spt-server.git/info/lfs
+          git lfs pull
           cd project
           npm run build:release
           ls -l build
