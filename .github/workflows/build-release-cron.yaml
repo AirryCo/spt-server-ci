@@ -130,6 +130,7 @@ jobs:
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "bot@github.com"
+        shell: bash
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -140,7 +141,6 @@ jobs:
         run: |
           git config -f .lfsconfig lfs.url https://${{ secrets.GITEA_PUSH_TOKEN }}:@git.rui.he.cn:3000/henry/spt-server.git/info/lfs
           git lfs pull
-          git pull
           git fetch -u ${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER }}.git ${{ env.RELEASE_BRANCH }}:SPT-${{ env.RELEASE_BRANCH }}
           git merge -m "🤖 Merge tag \`${{ needs.prepare.outputs.TARGET_TAG }}\` from SPT" --no-ff ${{ needs.prepare.outputs.TARGET_TAG }}
           git tag -d ${{ needs.prepare.outputs.TARGET_TAG }}
@@ -207,7 +207,6 @@ jobs:
 
       - name: Push Linux Server Code
         run: |
-          git pull
           REMOTE_URL="https://AirryCo:${{ secrets.AIRRYCO_TOKEN }}@github.com/${{ env.REPOSITORY_SPT_SERVER_AIRRYCO }}.git"
           git remote set-url origin "$REMOTE_URL"
           git config -f .lfsconfig lfs.url https://${{ secrets.GITEA_PUSH_TOKEN }}:@git.rui.he.cn:3000/henry/spt-server.git/info/lfs
