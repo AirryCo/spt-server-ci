@@ -9,7 +9,7 @@ env:
   SERVER_URL: https://dev.sp-tarkov.com
   REPOSITORY_SERVER: SPT/Server
   REPOSITORY_SERVER_MEDUSA: medusa/spt-server
-  NIGHTLY_BRANCH: 3.10.0-DEV
+  NIGHTLY_BRANCH: 3.11.x-DEV
 
 jobs:
   prepare:

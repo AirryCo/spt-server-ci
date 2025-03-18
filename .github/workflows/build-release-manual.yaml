@@ -125,7 +125,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20.11.1
+          node-version: 22.12.0
 
       - name: Runner Debug Information
         id: debug-info
@@ -200,7 +200,7 @@ jobs:
 
       # docker
       - name: Extract metadata for Docker with release version
-        if: ${{ !contains(needs.prepare.outputs.TARGET_TAG, 'BEM') }}
+        if: ${{ !contains(needs.prepare.outputs.TARGET_TAG, 'BE') }}
         id: meta
         uses: docker/metadata-action@v5
         with:
@@ -213,7 +213,7 @@ jobs:
             type=semver,pattern={{major}}.{{minor}},value=${{ needs.prepare.outputs.TARGET_TAG }}
             type=raw,value=latest
       - name: Extract metadata for Docker with release version and fika built-in
-        if: ${{ !contains(needs.prepare.outputs.TARGET_TAG, 'BEM') }}
+        if: ${{ !contains(needs.prepare.outputs.TARGET_TAG, 'BE') }}
         id: meta-fika
         uses: docker/metadata-action@v5
         with:
@@ -226,7 +226,7 @@ jobs:
             type=semver,pattern={{major}}.{{minor}}-fika,value=${{ needs.prepare.outputs.TARGET_TAG }}
             type=raw,value=latest-fika
       - name: Extract metadata for Docker with bem version
-        if: ${{ contains(needs.prepare.outputs.TARGET_TAG, 'BEM') }}
+        if: ${{ contains(needs.prepare.outputs.TARGET_TAG, 'BE') }}
         id: meta-bem
         uses: docker/metadata-action@v5
         with:
@@ -238,7 +238,7 @@ jobs:
             type=semver,pattern={{version}},value=${{ needs.prepare.outputs.TARGET_TAG }}
             type=semver,pattern={{major}}.{{minor}},value=${{ needs.prepare.outputs.TARGET_TAG }}
       - name: Extract metadata for Docker with bem version and fika built-in
-        if: ${{ contains(needs.prepare.outputs.TARGET_TAG, 'BEM') }}
+        if: ${{ contains(needs.prepare.outputs.TARGET_TAG, 'BE') }}
         id: meta-bem-fika
         uses: docker/metadata-action@v5
         with:
@@ -277,7 +277,7 @@ jobs:
           password: ${{ secrets.ALIYUN_REGISTRY_TOKEN }}
 
       - name: Build and Push For Release With Fika
-        if: ${{ !contains(needs.prepare.outputs.TARGET_TAG, 'BEM') }}
+        if: ${{ !contains(needs.prepare.outputs.TARGET_TAG, 'BE') }}
         uses: docker/build-push-action@v6
         with:
           context: ./docker
@@ -291,7 +291,7 @@ jobs:
             org.opencontainers.image.revision=${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID_WHOLE }}
           platforms: linux/amd64,linux/arm64
       - name: Build and Push For Release
-        if: ${{ !contains(needs.prepare.outputs.TARGET_TAG, 'BEM') }}
+        if: ${{ !contains(needs.prepare.outputs.TARGET_TAG, 'BE') }}
         uses: docker/build-push-action@v6
         with:
           context: ./docker
@@ -306,7 +306,7 @@ jobs:
           platforms: linux/amd64,linux/arm64
 
       - name: Build and Push For BEM With Fika
-        if: ${{ contains(needs.prepare.outputs.TARGET_TAG, 'BEM') }}
+        if: ${{ contains(needs.prepare.outputs.TARGET_TAG, 'BE') }}
         uses: docker/build-push-action@v6
         with:
           context: ./docker
@@ -320,7 +320,7 @@ jobs:
             org.opencontainers.image.revision=${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID_WHOLE }}
           platforms: linux/amd64,linux/arm64
       - name: Build and Push For BEM
-        if: ${{ contains(needs.prepare.outputs.TARGET_TAG, 'BEM') }}
+        if: ${{ contains(needs.prepare.outputs.TARGET_TAG, 'BE') }}
         uses: docker/build-push-action@v6
         with:
           context: ./docker
@@ -455,7 +455,7 @@ jobs:
 
       - name: Download Fika-Server
         run: |
-          wget https://github.com/project-fika/Fika-Server/releases/download/${{ needs.prepare.outputs.TARGET_TAG_FIKA }}/fika-server.zip
+          wget https://github.com/project-fika/Fika-Server/releases/download/${{ needs.prepare.outputs.TARGET_TAG_FIKA }}/fika-server-$(echo ${{ needs.prepare.outputs.TARGET_TAG_FIKA }} | cut -c2-).zip
 
       - name: Compress Releases
         id: compress-release
