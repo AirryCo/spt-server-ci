@@ -94,7 +94,6 @@ jobs:
     runs-on: ubuntu-latest
     env:
       OUTPUT_DIR: spt-server
-      SOURCECODE_DIR: ${{ github.workspace }}/code
 
       DOCKERHUB_USER: stblog
       DOCKERHUB_REPOSITORY: spt-server
@@ -110,15 +109,17 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          repository: '${{ env.REPOSITORY_SPT_SERVER_AIRRYCO }}'
+          ref: '${{ github.ref_name }}'
+          lfs: 'false'
+          fetch-depth: '0'
+          token: '${{ secrets.AIRRYCO_TOKEN }}'
       - name: Setup Git Config
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "bot@github.com"
-
-      - name: Clone AirryCo's Linux Server Code
-        run: |
-          git clone -b ${{ github.ref_name }} ${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_AIRRYCO }} ${{ env.SOURCECODE_DIR }}
-          cd ${{ env.SOURCECODE_DIR }}
+          git config -f .lfsconfig lfs.url https://${{ secrets.GITEA_PUSH_TOKEN }}:@git.rui.he.cn:3000/henry/spt-server.git/info/lfs
           git lfs pull
         shell: bash
 
@@ -130,8 +131,6 @@ jobs:
       - name: Runner Debug Information
         id: debug-info
         run: |
-          cp -v ${{ env.SOURCECODE_DIR }}/project/package.json .
-          cd ${{ env.SOURCECODE_DIR }}
           echo "git version: $(git --version)"
           echo "git lfs version: $(git-lfs --version)"
           echo "node.js version: $(node --version)"
@@ -147,22 +146,22 @@ jobs:
         uses: actions/cache@v4
         with:
           path: |
-            ${{ env.SOURCECODE_DIR }}/project/node_modules
-          key: ${{ runner.os }}-npm-dependencies-${{ hashFiles('package.json') }}
+            project/node_modules
+          key: ${{ runner.os }}-npm-dependencies-${{ hashFiles('project/package.json') }}
           restore-keys: |
             ${{ runner.os }}-npm-dependencies-
 
       - name: Install NPM Dependencies
         if: steps.cache-npm-dependencies.outputs.cache-hit != 'true'
         run: |
-          cd ${{ env.SOURCECODE_DIR }}/project
+          cd project
           npm install
         shell: bash
 
       - name: Build Linux Server
         id: build-server
         run: |
-          cd ${{ env.SOURCECODE_DIR }}/project
+          cd project
           npm run build:release
           ls -l build
           mv build ${{ env.OUTPUT_DIR }}
@@ -182,8 +181,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ${{ steps.filename.outputs.LINUX_ARTIFACT }}
-          path: ${{ env.SOURCECODE_DIR }}/project/${{ env.OUTPUT_DIR }}
+          path: project/${{ env.OUTPUT_DIR }}
           overwrite: true
+          retention-days: 1
 
   build-docker-image-multi-arch:
     needs: [prepare, build-server-linux]
@@ -194,9 +194,16 @@ jobs:
       GHCR_USER: airryco
       GHCR_REPOSITORY: spt-server
 
+    outputs:
+      DOCKER_DIGEST: ${{ steps.build-and-push.outputs.digest }}
+      DOCKER_IMAGEID: ${{ steps.build-and-push.outputs.imageid }}
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Git pull
+        run: |
+          git pull
 
       # docker
       - name: Extract metadata for Docker with release version
@@ -225,30 +232,6 @@ jobs:
             type=semver,pattern={{version}}-fika,value=${{ needs.prepare.outputs.TARGET_TAG }}
             type=semver,pattern={{major}}.{{minor}}-fika,value=${{ needs.prepare.outputs.TARGET_TAG }}
             type=raw,value=latest-fika
-      - name: Extract metadata for Docker with bem version
-        if: ${{ contains(needs.prepare.outputs.TARGET_TAG, 'BE') }}
-        id: meta-bem
-        uses: docker/metadata-action@v5
-        with:
-          images: |
-            ${{ env.DOCKERHUB_USER }}/${{ env.DOCKERHUB_REPOSITORY }}
-            ghcr.io/${{ env.GHCR_USER }}/${{ env.GHCR_REPOSITORY }}
-            registry.cn-shenzhen.aliyuncs.com/spt-server/spt-server
-          tags: |
-            type=semver,pattern={{version}},value=${{ needs.prepare.outputs.TARGET_TAG }}
-            type=semver,pattern={{major}}.{{minor}},value=${{ needs.prepare.outputs.TARGET_TAG }}
-      - name: Extract metadata for Docker with bem version and fika built-in
-        if: ${{ contains(needs.prepare.outputs.TARGET_TAG, 'BE') }}
-        id: meta-bem-fika
-        uses: docker/metadata-action@v5
-        with:
-          images: |
-            ${{ env.DOCKERHUB_USER }}/${{ env.DOCKERHUB_REPOSITORY }}
-            ghcr.io/${{ env.GHCR_USER }}/${{ env.GHCR_REPOSITORY }}
-            registry.cn-shenzhen.aliyuncs.com/spt-server/spt-server
-          tags: |
-            type=semver,pattern={{version}}-fika,value=${{ needs.prepare.outputs.TARGET_TAG }}
-            type=semver,pattern={{major}}.{{minor}}-fika,value=${{ needs.prepare.outputs.TARGET_TAG }}
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
@@ -305,41 +288,11 @@ jobs:
             org.opencontainers.image.revision=${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID_WHOLE }}
           platforms: linux/amd64,linux/arm64
 
-      - name: Build and Push For BEM With Fika
-        if: ${{ contains(needs.prepare.outputs.TARGET_TAG, 'BE') }}
-        uses: docker/build-push-action@v6
-        with:
-          context: ./docker
-          file: ./docker/Dockerfile-manual-fika
-          push: true
-          tags: ${{ steps.meta-bem-fika.outputs.tags }}
-          labels: |
-            ${{ steps.meta-bem-fika.outputs.labels }}
-            org.opencontainers.image.source=https://github.com/AirryCo/spt-server
-            org.opencontainers.image.url=https://github.com/AirryCo/spt-server
-            org.opencontainers.image.revision=${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID_WHOLE }}
-          platforms: linux/amd64,linux/arm64
-      - name: Build and Push For BEM
-        if: ${{ contains(needs.prepare.outputs.TARGET_TAG, 'BE') }}
-        uses: docker/build-push-action@v6
-        with:
-          context: ./docker
-          file: ./docker/Dockerfile-manual
-          push: true
-          tags: ${{ steps.meta-bem.outputs.tags }}
-          labels: |
-            ${{ steps.meta-bem.outputs.labels }}
-            org.opencontainers.image.source=https://github.com/AirryCo/spt-server
-            org.opencontainers.image.url=https://github.com/AirryCo/spt-server
-            org.opencontainers.image.revision=${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID_WHOLE }}
-          platforms: linux/amd64,linux/arm64
-
   build-server-windows:
     needs: [prepare, build-server-linux]
     runs-on: windows-latest
     env:
       OUTPUT_DIR: spt-server
-      SOURCECODE_DIR: c:/snapshot
     outputs:
       WIN_COMMIT_ID: ${{ steps.debug-info.outputs.COMMIT_ID }}
       WIN_ARTIFACT: ${{ steps.filename.outputs.WIN_ARTIFACT }}
@@ -349,38 +302,35 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Clone AirroCo's Server Code
-        run: |
-          git clone -b ${{ github.ref_name }} --depth=1 ${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_AIRRYCO }} ${{ env.SOURCECODE_DIR }}
-          cd ${{ env.SOURCECODE_DIR }}
-          git lfs pull
-        shell: bash
+        with:
+          repository: '${{ env.REPOSITORY_SPT_SERVER_AIRRYCO }}'
+          ref: '${{ github.ref_name }}'
+          lfs: 'false'
+          fetch-depth: '1'
+          token: '${{ secrets.AIRRYCO_TOKEN }}'
 
       # Modify the JSON file with PowerShell
       - name: Modify JSON file with PowerShell
         run: |
-          cd ${{ env.SOURCECODE_DIR }}/project/assets/configs
+          cd project/assets/configs
           $json = Get-Content -Path "core.json" | ConvertFrom-Json
           $json.projectName = "AirryCo's SPT Windows"
           $json | ConvertTo-Json -Depth 10 | Set-Content -Path "core.json"
         shell: pwsh
       - name: Replace serverExeName
         run: |
-          cd ${{ env.SOURCECODE_DIR }}/project
+          cd project
           sed -i 's/SPT.Server/SPT.Server.exe/g' gulpfile.mjs
         shell: bash
 
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20.11.1
+          node-version: 22.12.0
 
       - name: Runner Debug Information
         id: debug-info
         run: |
-          cp -v ${{ env.SOURCECODE_DIR }}/project/package.json .
-          cd ${{ env.SOURCECODE_DIR }}
           echo "git version: $(git --version)"
           echo "git lfs version: $(git-lfs --version)"
           echo "node.js version: $(node --version)"
@@ -395,22 +345,24 @@ jobs:
         uses: actions/cache@v4
         with:
           path: |
-            ${{ env.SOURCECODE_DIR }}/project/node_modules
-          key: ${{ runner.os }}-npm-dependencies-${{ hashFiles('package.json') }}
+            project/node_modules
+          key: ${{ runner.os }}-npm-dependencies-${{ hashFiles('project/package.json') }}
           restore-keys: |
             ${{ runner.os }}-npm-dependencies-
 
       - name: Install NPM Dependencies
         if: steps.cache-npm-dependencies.outputs.cache-hit != 'true'
         run: |
-          cd ${{ env.SOURCECODE_DIR }}/project
+          cd project
           npm install
         shell: pwsh
 
       - name: Build Windows Server
         id: build-server
         run: |
-          cd ${{ env.SOURCECODE_DIR }}/project
+          git config -f .lfsconfig lfs.url https://${{ secrets.GITEA_PUSH_TOKEN }}:@git.rui.he.cn:3000/henry/spt-server.git/info/lfs
+          git lfs pull
+          cd project
           npm run build:release
           ls -l build
           mv build ${{ env.OUTPUT_DIR }}
@@ -430,7 +382,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ${{ steps.filename.outputs.WIN_ARTIFACT }}
-          path: ${{ env.SOURCECODE_DIR }}/project/${{ env.OUTPUT_DIR }}
+          path: project/${{ env.OUTPUT_DIR }}
           overwrite: true
 
   assemble-and-publish:
@@ -479,7 +431,7 @@ jobs:
 
       - name: Create Github Pre-release
         id: create_pre_release
-        if: ${{ contains(needs.prepare.outputs.TARGET_TAG, 'BEM') }}
+        if: ${{ contains(needs.prepare.outputs.TARGET_TAG, 'BE') }}
         uses: softprops/action-gh-release@v2
         with:
           name: ${{ needs.prepare.outputs.TARGET_TAG }}
@@ -528,7 +480,7 @@ jobs:
 
       - name: Create Github Release
         id: create_release
-        if: ${{ !contains(needs.prepare.outputs.TARGET_TAG, 'BEM') }}
+        if: ${{ !contains(needs.prepare.outputs.TARGET_TAG, 'BE') }}
         uses: softprops/action-gh-release@v2
         with:
           name: ${{ needs.prepare.outputs.TARGET_TAG }}

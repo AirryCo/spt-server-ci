@@ -479,7 +479,7 @@ jobs:
 
       - name: Create Github Pre-release
         id: create_pre_release
-        if: ${{ contains(needs.prepare.outputs.TARGET_TAG, 'BEM') }}
+        if: ${{ contains(needs.prepare.outputs.TARGET_TAG, 'BE') }}
         uses: softprops/action-gh-release@v2
         with:
           name: ${{ needs.prepare.outputs.TARGET_TAG }}
