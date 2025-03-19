@@ -201,9 +201,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Git pull
-        run: |
-          git pull
 
       # docker
       - name: Extract metadata for Docker with release version
