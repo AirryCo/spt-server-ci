@@ -37,9 +37,10 @@ jobs:
       - name: Get Latest Tag From SPT
         id: get-latest-tag
         run: |
-          git clone -b ${{ env.RELEASE_BRANCH }} ${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER }}.git Server
+          GIT_LFS_SKIP_SMUDGE=1 git clone ${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER }}.git Server
           cd Server
-          SPT_SERVER_LATEST_TAG=$(git describe --tags --abbrev=0)
+          git fetch --tags origin
+          SPT_SERVER_LATEST_TAG=$(git for-each-ref --sort=-creatordate --format='%(creatordate:iso) %(refname:short)' refs/tags | head -n1 | awk '{print $4}')
           echo "👽 SPT_SERVER_LATEST_TAG = $SPT_SERVER_LATEST_TAG"
           echo "SPT_SERVER_LATEST_TAG=$SPT_SERVER_LATEST_TAG" >> $GITHUB_OUTPUT
         shell: bash
@@ -141,7 +142,7 @@ jobs:
         run: |
           git config -f .lfsconfig lfs.url https://${{ secrets.GITEA_PUSH_TOKEN }}:@git.rui.he.cn:3000/henry/spt-server.git/info/lfs
           git lfs pull
-          git fetch -u ${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER }}.git ${{ env.RELEASE_BRANCH }}:SPT-${{ env.RELEASE_BRANCH }}
+          git fetch -u ${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER }}.git ${{ needs.prepare.outputs.TARGET_TAG }}:SPT-${{ needs.prepare.outputs.TARGET_TAG }}
           git merge -m "🤖 Merge tag \`${{ needs.prepare.outputs.TARGET_TAG }}\` from SPT" --no-ff ${{ needs.prepare.outputs.TARGET_TAG }}
           git tag -d ${{ needs.prepare.outputs.TARGET_TAG }}
           git tag ${{ needs.prepare.outputs.TARGET_TAG }}
