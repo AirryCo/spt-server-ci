@@ -404,7 +404,7 @@ jobs:
 
       - name: Download Fika-Server
         run: |
-          wget https://github.com/project-fika/Fika-Server/releases/download/${{ needs.prepare.outputs.TARGET_TAG_FIKA }}/fika-server-$(echo ${{ needs.prepare.outputs.TARGET_TAG_FIKA }} | cut -c2-).zip
+          wget https://github.com/project-fika/Fika-Server/releases/download/${{ needs.prepare.outputs.TARGET_TAG_FIKA }}/fika-server-$(echo ${{ needs.prepare.outputs.TARGET_TAG_FIKA }} | cut -c2-).zip -O fika-server.zip
 
       - name: Compress Releases
         id: compress-release
