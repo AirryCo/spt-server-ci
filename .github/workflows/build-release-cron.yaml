@@ -50,7 +50,7 @@ jobs:
           source trigger.release
           server_last_built_tag=$server
           server_latest_tag=${{ steps.get-latest-tag.outputs.SPT_SERVER_LATEST_TAG }}
-          if [ "$server_last_built_tag" != "$server_latest_tag" ] && ${{ !contains(server_latest_tag, 'BE') }}; then
+          if [ "$server_last_built_tag" != "$server_latest_tag" ] && ${{ !contains(steps.get-latest-tag.outputs.SPT_SERVER_LATEST_TAG, 'BE') }}; then
             echo "✅ There is different between last-built-tag and lastest-tag, continue to build."
             echo "BUILT_TAG=$server_last_built_tag" >> $GITHUB_OUTPUT
             echo "TARGET_TAG=$server_latest_tag" >> $GITHUB_OUTPUT
