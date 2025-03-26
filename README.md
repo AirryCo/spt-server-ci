@@ -8,7 +8,6 @@ You can find the lanucher from [here](https://github.com/AirryCo/spt-launcher-ci
 
 [![SPT-Server Build Nightly](https://github.com/AirryCo/spt-server-ci/actions/workflows/build-nightly-cron.yaml/badge.svg)](https://github.com/AirryCo/spt-server-ci/actions/workflows/build-nightly-cron.yaml)
 
-[![SPT-Server Manual Build](https://github.com/AirryCo/spt-server-ci/actions/workflows/build-nightly-manual.yaml/badge.svg)](https://github.com/AirryCo/spt-server-ci/actions/workflows/build-nightly-manual.yaml)
 
 ## How to use
 

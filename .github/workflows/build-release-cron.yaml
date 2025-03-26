@@ -50,13 +50,13 @@ jobs:
           source trigger.release
           server_last_built_tag=$server
           server_latest_tag=${{ steps.get-latest-tag.outputs.SPT_SERVER_LATEST_TAG }}
-          if [ "$server_last_built_tag" != "$server_latest_tag" ]; then
+          if [ "$server_last_built_tag" != "$server_latest_tag" ] && ${{ !contains(needs.prepare.outputs.TARGET_TAG, 'BE') }}; then
             echo "✅ There is different between last-built-tag and lastest-tag, continue to build."
             echo "BUILT_TAG=$server_last_built_tag" >> $GITHUB_OUTPUT
             echo "TARGET_TAG=$server_latest_tag" >> $GITHUB_OUTPUT
             echo "PROCEED=true" >> $GITHUB_OUTPUT
           else
-            echo "✋ last-built-tag and latest-tag are the same, stop building."
+            echo "✋ tags are the same, stop building."
             echo "PROCEED=false" >> $GITHUB_OUTPUT
           fi
         shell: bash
@@ -238,7 +238,6 @@ jobs:
 
       # docker
       - name: Extract metadata for Docker with release version
-        if: ${{ !contains(needs.prepare.outputs.TARGET_TAG, 'BE') }}
         id: meta
         uses: docker/metadata-action@v5
         with:
@@ -251,7 +250,6 @@ jobs:
             type=semver,pattern={{major}}.{{minor}},value=${{ needs.prepare.outputs.TARGET_TAG }}
             type=raw,value=latest
       - name: Extract metadata for Docker with release version and fika built-in
-        if: ${{ !contains(needs.prepare.outputs.TARGET_TAG, 'BE') }}
         id: meta-fika
         uses: docker/metadata-action@v5
         with:
@@ -291,7 +289,6 @@ jobs:
           password: ${{ secrets.ALIYUN_REGISTRY_TOKEN }}
 
       - name: Build and Push For Release With Fika
-        if: ${{ !contains(needs.prepare.outputs.TARGET_TAG, 'BE') }}
         uses: docker/build-push-action@v6
         with:
           context: ./docker
@@ -305,7 +302,6 @@ jobs:
             org.opencontainers.image.revision=${{ needs.build-server-linux.outputs.LINUX_COMMIT_ID_WHOLE }}
           platforms: linux/amd64,linux/arm64
       - name: Build and Push For Release
-        if: ${{ !contains(needs.prepare.outputs.TARGET_TAG, 'BE') }}
         uses: docker/build-push-action@v6
         with:
           context: ./docker
