@@ -2,7 +2,7 @@
 
 Automatically compiles the SPT code daily at midnight and pushes the compiled version to the releases. 
 
-You can find the lanucher from [here](https://github.com/AirryCo/spt-launcher-ci/releases)
+You can find the launcher from [here](https://github.com/AirryCo/spt-launcher-ci/releases)
 
 [![SPT-Server Build Release](https://github.com/AirryCo/spt-server-ci/actions/workflows/build-release-cron.yaml/badge.svg)](https://github.com/AirryCo/spt-server-ci/actions/workflows/build-release-cron.yaml)
 
