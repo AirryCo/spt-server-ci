@@ -376,7 +376,7 @@ jobs:
             > [!WARNING]
             > After downloading, please use extraction software like WinRAR or [7-Zip](https://www.7-zip.org/) to unzip the files, then copy them to the Tarkov root directory. Do not use Windows File Explorer to directly open and copy the files.
 
-            Full Changelog: [${{ needs.prepare.outputs.BUILT_HASH }}...${{ needs.prepare.outputs.SPT_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER_AIRRYCO }}/compare/${{ needs.prepare.outputs.BUILT_HASH }}...${{ needs.prepare.outputs.SPT_COMMIT_ID }})
+            Full Changelog: [${{ needs.prepare.outputs.BUILT_HASH }}...${{ needs.prepare.outputs.SPT_COMMIT_ID }}](${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER }}/compare/${{ needs.prepare.outputs.BUILT_HASH }}...${{ needs.prepare.outputs.SPT_COMMIT_ID }})
 
           files: |
             ${{ needs.build-server-host.outputs.WIN_RELEASE_FILE }}
