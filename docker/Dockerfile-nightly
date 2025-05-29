@@ -2,7 +2,7 @@ FROM mcr.microsoft.com/dotnet/sdk:9.0 AS server-builder
 ARG SPT_VERSION
 ARG SPT_BUILD_TYPE
 RUN apt update && apt install -y git git-lfs wget && \
-    git clone -b develop --depth=1 https://git.rui.he.cn:3000/SP-Tarkov/server-csharp.git /snapshot && \
+    git clone -b develop --depth=1 https://github.com/sp-tarkov/server-csharp.git /snapshot && \
     cd /snapshot && git lfs pull && \
     cd Libraries/SPTarkov.Server.Assets/Assets/configs && sed -i "s/\"projectName\": \"SPT\",/\"projectName\": \"AirryCo's SPT Linux\",/g" core.json && \
     cd /snapshot/Libraries/SPTarkov.Server.Assets/Assets/images/launcher && rm bg.png && wget https://raw.githubusercontent.com/AirryCo/spt-server-ci/refs/heads/main/custom/bg.png && \
