@@ -95,7 +95,7 @@ jobs:
 
       - name: Clone Server
         run: |
-          git clone -b ${{ env.NIGHTLY_BRANCH_NAME }} --depth=1 https://git.rui.he.cn:3000/SP-Tarkov/server-csharp.git /snapshot
+          git clone -b ${{ env.NIGHTLY_BRANCH }} --depth=1 https://git.rui.he.cn:3000/SP-Tarkov/server-csharp.git /snapshot
           cd /snapshot
           git lfs pull
 
@@ -110,7 +110,7 @@ jobs:
 
           echo "COMMIT_ID_LONG=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
           echo "COMMIT_ID_SHORT=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
-          echo "SPT_COMMIT_TIME"=$(git log --pretty=format:"%ai" ${{ env.NIGHTLY_BRANCH_NAME }} -1) >> $GITHUB_OUTPUT
+          echo "SPT_COMMIT_TIME"=$(git log --pretty=format:"%ai" ${{ env.NIGHTLY_BRANCH }} -1) >> $GITHUB_OUTPUT
         shell: bash
 
       - name: Replace Background Image
