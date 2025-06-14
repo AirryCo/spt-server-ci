@@ -129,7 +129,7 @@ jobs:
       - name: Publish Windows Server
         run: |
           cd /snapshot
-          dotnet publish ./SPTarkov.Server/SPTarkov.Server.csproj -c Release -f net9.0 -r win-x64 -p:IncludeNativeLibrariesForSelfExtract=true -p:PublishSingleFile=true --self-contained false -p:SptBuildType=${{ needs.prepare.outputs.BUILD_TYPE }} -p:SptVersion=${{ needs.prepare.outputs.SPT_VERSION }} -p:SptBuildTime=$( date +%Y%m%d ) -p:SptCommit=${{ steps.debug-info.outputs.COMMIT_ID_SHORT }}
+          dotnet publish ./SPTarkov.Server/SPTarkov.Server.csproj -c Release -f net9.0 -r win-x64 -p:IncludeNativeLibrariesForSelfExtract=true -p:PublishSingleFile=true --self-contained false -p:SptBuildType=${{ needs.prepare.outputs.BUILD_TYPE }} -p:SptVersion=${{ needs.prepare.outputs.SPT_VERSION }} -p:SptBuildTime=$( date +%Y%m%d ) -p:SptCommit=${{ steps.debug-info.outputs.COMMIT_ID_SHORT }} -p:IsPublish=true
         shell: bash
 
       - name: Replace projectName For Linux
@@ -143,7 +143,7 @@ jobs:
         shell: bash
         run: |
           cd /snapshot
-          dotnet publish ./SPTarkov.Server/SPTarkov.Server.csproj -c Release -f net9.0 -r linux-x64 -p:IncludeNativeLibrariesForSelfExtract=true -p:PublishSingleFile=true --self-contained false -p:SptBuildType=${{ needs.prepare.outputs.BUILD_TYPE }} -p:SptVersion=${{ needs.prepare.outputs.SPT_VERSION }} -p:SptBuildTime=$( date +%Y%m%d ) -p:SptCommit=${{ steps.debug-info.outputs.COMMIT_ID_SHORT }}
+          dotnet publish ./SPTarkov.Server/SPTarkov.Server.csproj -c Release -f net9.0 -r linux-x64 -p:IncludeNativeLibrariesForSelfExtract=true -p:PublishSingleFile=true --self-contained false -p:SptBuildType=${{ needs.prepare.outputs.BUILD_TYPE }} -p:SptVersion=${{ needs.prepare.outputs.SPT_VERSION }} -p:SptBuildTime=$( date +%Y%m%d ) -p:SptCommit=${{ steps.debug-info.outputs.COMMIT_ID_SHORT }} -p:IsPublish=true
 
       - name: Generate File Name
         id: filename
