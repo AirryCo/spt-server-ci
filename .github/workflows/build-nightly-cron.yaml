@@ -60,7 +60,7 @@ jobs:
           SPT_COMMIT_ID=${{ steps.get-latest-commit.outputs.SPT_COMMIT_ID }}
 
           # Extract versions from core.json
-          wget https://raw.githubusercontent.com/${{ env.REPOSITORY_SPT_SERVER }}/refs/heads/${{ env.NIGHTLY_BRANCH }}/Libraries/SPTarkov.Server.Assets/Assets/configs/core.json
+          wget https://raw.githubusercontent.com/${{ env.REPOSITORY_SPT_SERVER }}/refs/heads/${{ env.NIGHTLY_BRANCH }}/Libraries/SPTarkov.Server.Assets/SPT_Data/configs/core.json
           SPT_VERSION=$(jq -r '.sptVersion' core.json)
           CLIENT_VERSION=$(jq -r '.compatibleTarkovVersion' core.json)
 
@@ -116,12 +116,12 @@ jobs:
       - name: Replace Background Image
         id: bg
         run: |
-          cp custom/bg.png /snapshot/Libraries/SPTarkov.Server.Assets/Assets/images/launcher/
+          cp custom/bg.png /snapshot/Libraries/SPTarkov.Server.Assets/SPT_Data/images/launcher/
         shell: bash
 
       - name: Replace projectName For Windows
         run: |
-          cd /snapshot/Libraries/SPTarkov.Server.Assets/Assets/configs
+          cd /snapshot/Libraries/SPTarkov.Server.Assets/SPT_Data/configs
           git checkout core.json
           sed -i "s/\"projectName\": \"SPT\",/\"projectName\": \"AirryCo's SPT Windows\",/g" core.json
         shell: bash
@@ -134,7 +134,7 @@ jobs:
 
       - name: Replace projectName For Linux
         run: |
-          cd /snapshot/Libraries/SPTarkov.Server.Assets/Assets/configs
+          cd /snapshot/Libraries/SPTarkov.Server.Assets/SPT_Data/configs
           git checkout core.json
           sed -i "s/\"projectName\": \"SPT\",/\"projectName\": \"AirryCo's SPT Linux\",/g" core.json
         shell: bash

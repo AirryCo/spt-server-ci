@@ -4,8 +4,8 @@ ARG SPT_BUILD_TYPE
 RUN apt update && apt install -y git git-lfs wget && \
     git clone -b develop --depth=1 https://github.com/sp-tarkov/server-csharp.git /snapshot && \
     cd /snapshot && git lfs pull && \
-    cd Libraries/SPTarkov.Server.Assets/Assets/configs && sed -i "s/\"projectName\": \"SPT\",/\"projectName\": \"AirryCo's SPT Linux\",/g" core.json && \
-    cd /snapshot/Libraries/SPTarkov.Server.Assets/Assets/images/launcher && rm bg.png && wget https://raw.githubusercontent.com/AirryCo/spt-server-ci/refs/heads/main/custom/bg.png && \
+    cd Libraries/SPTarkov.Server.Assets/SPT_Data/configs && sed -i "s/\"projectName\": \"SPT\",/\"projectName\": \"AirryCo's SPT Linux\",/g" core.json && \
+    cd /snapshot/Libraries/SPTarkov.Server.Assets/SPT_Data/images/launcher && rm bg.png && wget https://raw.githubusercontent.com/AirryCo/spt-server-ci/refs/heads/main/custom/bg.png && \
     cd /snapshot && \
     dotnet publish ./SPTarkov.Server/SPTarkov.Server.csproj -c Release -f net9.0 -r linux-x64 -p:IncludeNativeLibrariesForSelfExtract=true -p:PublishSingleFile=true --self-contained false -p:SptBuildType=$SPT_BUILD_TYPE -p:SptVersion=$SPT_VERSION -p:SptBuildTime=$( date +%Y%m%d ) -p:SptCommit=$(git rev-parse --short HEAD) -p:IsPublish=true && \
     rm SPTarkov.Server/bin/Release/net9.0/linux-x64/publish/*.pdb && \
