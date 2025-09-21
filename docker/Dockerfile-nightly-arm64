@@ -15,7 +15,7 @@ RUN apt update && apt install -y git git-lfs wget && \
 FROM mcr.microsoft.com/dotnet/aspnet:9.0-bookworm-slim-arm64v8
 LABEL author="AirryCo <henry@stblog.com.cn>"
 ENV TZ=Asia/Shanghai
-COPY --from=server-builder /snapshot/SPTarkov.Server/bin/Release/net9.0/linux-arm64/publish/ /app/spt-server/
+COPY --from=server-builder /snapshot/SPTarkov.Server/bin/$SPT_BUILD_CONFIG/net9.0/linux-arm64/publish/ /app/spt-server/
 VOLUME /opt/spt-server
 WORKDIR /opt/spt-server
 EXPOSE 6969
