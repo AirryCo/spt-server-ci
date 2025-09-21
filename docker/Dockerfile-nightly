@@ -13,6 +13,7 @@ RUN apt update && apt install -y git git-lfs wget && \
     rm -rf /var/lib/apt/lists/*
 
 FROM mcr.microsoft.com/dotnet/aspnet:9.0-bookworm-slim
+ARG SPT_BUILD_CONFIG
 LABEL author="AirryCo <henry@stblog.com.cn>"
 ENV TZ=Asia/Shanghai
 COPY --from=server-builder /snapshot/SPTarkov.Server/bin/$SPT_BUILD_CONFIG/net9.0/linux-x64/publish/ /app/spt-server/
