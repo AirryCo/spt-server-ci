@@ -25,7 +25,8 @@ jobs:
       SPT_COMMIT_ID: ${{ steps.versions.outputs.SPT_COMMIT_ID }}
       FIKA_SERVER_COMMIT: ${{ steps.compare-fika.outputs.FIKA_SERVER_COMMIT }}
       BUILD_DATE_TIME: ${{ steps.versions.outputs.DATE_TIME }}
-      BUILD_TYPE: BLEEDING_EDGE_MODS
+      BUILD_TYPE: BLEEDINGEDGEMODS # BLEEDINGEDGE BLEEDINGEDGEMODS Release
+      BUILD_CONFIG: Debug # Debug Release
 
     steps:
       - name: Checkout
@@ -61,7 +62,7 @@ jobs:
 
           # Extract versions from core.json
           wget https://raw.githubusercontent.com/${{ env.REPOSITORY_SPT_SERVER }}/refs/heads/${{ env.NIGHTLY_BRANCH }}/Libraries/SPTarkov.Server.Assets/SPT_Data/configs/core.json
-          SPT_VERSION=$(jq -r '.sptVersion' core.json)
+          SPT_VERSION=4.0.0
           CLIENT_VERSION=$(jq -r '.compatibleTarkovVersion' core.json)
 
           echo "👽 CLIENT_VERSION = $CLIENT_VERSION"
@@ -128,9 +129,20 @@ jobs:
 
       - name: Publish Windows Server
         run: |
-          cd /snapshot
-          dotnet publish ./SPTarkov.Server/SPTarkov.Server.csproj -c Release -f net9.0 -r win-x64 -p:IncludeNativeLibrariesForSelfExtract=true -p:PublishSingleFile=true --self-contained false -p:SptBuildType=${{ needs.prepare.outputs.BUILD_TYPE }} -p:SptVersion=${{ needs.prepare.outputs.SPT_VERSION }} -p:SptBuildTime=$( date +%Y%m%d ) -p:SptCommit=${{ steps.debug-info.outputs.COMMIT_ID_SHORT }} -p:IsPublish=true
+          dotnet publish ./SPTarkov.Server/SPTarkov.Server.csproj \
+            -c ${{ needs.prepare.outputs.BUILD_CONFIG }} \
+            -f net9.0 \
+            -r win-x64 \
+            -p:IncludeNativeLibrariesForSelfExtract=true \
+            -p:PublishSingleFile=true \
+            --self-contained false \
+            -p:SptBuildType=${{ needs.prepare.outputs.BUILD_TYPE }} \
+            -p:SptVersion=${{ needs.prepare.outputs.SPT_VERSION }} \
+            -p:SptBuildTime=$( date +%Y%m%d ) \
+            -p:SptCommit=${{ steps.debug-info.outputs.COMMIT_ID_SHORT }} \
+            -p:IsPublish=true
         shell: bash
+        working-directory: /snapshot
 
       - name: Replace projectName For Linux
         run: |
@@ -140,10 +152,21 @@ jobs:
         shell: bash
 
       - name: Publish Linux Server
-        shell: bash
         run: |
-          cd /snapshot
-          dotnet publish ./SPTarkov.Server/SPTarkov.Server.csproj -c Release -f net9.0 -r linux-x64 -p:IncludeNativeLibrariesForSelfExtract=true -p:PublishSingleFile=true --self-contained false -p:SptBuildType=${{ needs.prepare.outputs.BUILD_TYPE }} -p:SptVersion=${{ needs.prepare.outputs.SPT_VERSION }} -p:SptBuildTime=$( date +%Y%m%d ) -p:SptCommit=${{ steps.debug-info.outputs.COMMIT_ID_SHORT }} -p:IsPublish=true
+          dotnet publish ./SPTarkov.Server/SPTarkov.Server.csproj \
+            -c ${{ needs.prepare.outputs.BUILD_CONFIG }} \
+            -f net9.0 \
+            -r linux-x64 \
+            -p:IncludeNativeLibrariesForSelfExtract=true \
+            -p:PublishSingleFile=true \
+            --self-contained false \
+            -p:SptBuildType=${{ needs.prepare.outputs.BUILD_TYPE }} \
+            -p:SptVersion=${{ needs.prepare.outputs.SPT_VERSION }} \
+            -p:SptBuildTime=$( date +%Y%m%d ) \
+            -p:SptCommit=${{ steps.debug-info.outputs.COMMIT_ID_SHORT }} \
+            -p:IsPublish=true
+        shell: bash
+        working-directory: /snapshot
 
       - name: Generate File Name
         id: filename
@@ -164,18 +187,20 @@ jobs:
         with:
           name: ${{ steps.filename.outputs.WIN_ARTIFACT }}
           path: |
-            /snapshot/SPTarkov.Server/bin/Release/net9.0/win-x64/publish/
-            !/snapshot/SPTarkov.Server/bin/Release/net9.0/win-x64/publish/**/*.pdb
+            /snapshot/SPTarkov.Server/bin/${{ needs.prepare.outputs.BUILD_CONFIG }}/net9.0/win-x64/publish/
+            !/snapshot/SPTarkov.Server/bin/${{ needs.prepare.outputs.BUILD_CONFIG }}/net9.0/win-x64/publish/**/*.pdb
           overwrite: true
+          if-no-files-found: error
 
       - name: Artifact Linux Server
         uses: actions/upload-artifact@v4
         with:
           name: ${{ steps.filename.outputs.LINUX_ARTIFACT }}
           path: |
-            /snapshot/SPTarkov.Server/bin/Release/net9.0/linux-x64/publish/
-            !/snapshot/SPTarkov.Server/bin/Release/net9.0/linux-x64/publish/**/*.pdb
+            /snapshot/SPTarkov.Server/bin/${{ needs.prepare.outputs.BUILD_CONFIG }}/net9.0/linux-x64/publish/
+            !/snapshot/SPTarkov.Server/bin/${{ needs.prepare.outputs.BUILD_CONFIG }}/net9.0/linux-x64/publish/**/*.pdb
           overwrite: true
+          if-no-files-found: error
 
   build-docker-image-multi-arch:
     needs: [prepare, build-server-host]
@@ -261,6 +286,7 @@ jobs:
           platforms: linux/amd64
           build-args: |
             SPT_BUILD_TYPE=${{ needs.prepare.outputs.BUILD_TYPE }}
+            SPT_BUILD_CONFIG=${{ needs.prepare.outputs.BUILD_CONFIG }}
             SPT_VERSION=${{ needs.prepare.outputs.SPT_VERSION }}
 
       - name: Build and Push For ARM64
@@ -278,6 +304,7 @@ jobs:
           platforms: linux/arm64
           build-args: |
             SPT_BUILD_TYPE=${{ needs.prepare.outputs.BUILD_TYPE }}
+            SPT_BUILD_CONFIG=${{ needs.prepare.outputs.BUILD_CONFIG }}
             SPT_VERSION=${{ needs.prepare.outputs.SPT_VERSION }}
 
   update-trigger-and-push:
