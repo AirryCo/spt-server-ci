@@ -62,7 +62,7 @@ jobs:
 
           # Extract versions from core.json
           wget https://raw.githubusercontent.com/${{ env.REPOSITORY_SPT_SERVER }}/refs/heads/${{ env.NIGHTLY_BRANCH }}/Libraries/SPTarkov.Server.Assets/SPT_Data/configs/core.json
-          SPT_VERSION=4.0.0
+          SPT_VERSION=4.0.1
           CLIENT_VERSION=$(jq -r '.compatibleTarkovVersion' core.json)
 
           echo "👽 CLIENT_VERSION = $CLIENT_VERSION"
