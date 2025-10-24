@@ -48,4 +48,10 @@ sed -Ei "s/\"backendIp\": \"(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0
 sed -Ei "s/\"backendPort\": ([0-9]|[1-9][1-9]{1,3}|[1-5][0-9]{4}|6[1-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5]),/\"backendPort\": ${PORT},/g" SPT_Data/configs/http.json
 sed -Ei "s/\"webSocketPingDelayMs\": ([0-9]{1,}),/\"webSocketPingDelayMs\": ${PINGDELAYMS},/g" SPT_Data/configs/http.json
 
+if [ ! -f "sptLogger.json" ]; then
+  if [ -f "sptLogger.Development.json" ]; then
+    cp sptLogger.Development.json sptLogger.json
+  fi
+fi
+
 chmod +x SPTarkov.Server && ./SPTarkov.Server
