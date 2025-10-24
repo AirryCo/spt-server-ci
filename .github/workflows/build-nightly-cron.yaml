@@ -60,9 +60,11 @@ jobs:
         run: |
           SPT_COMMIT_ID=${{ steps.get-latest-commit.outputs.SPT_COMMIT_ID }}
 
+          latest_tag=$(git ls-remote --tags ${{ env.SERVER_URL }}/${{ env.REPOSITORY_SPT_SERVER }}.git | awk -F'/' '{print $NF}' | sort -V | tail -1)
+          SPT_VERSION=$(echo $latest_tag | cut -d'-' -f1)
+
           # Extract versions from core.json
           wget https://raw.githubusercontent.com/${{ env.REPOSITORY_SPT_SERVER }}/refs/heads/${{ env.NIGHTLY_BRANCH }}/Libraries/SPTarkov.Server.Assets/SPT_Data/configs/core.json
-          SPT_VERSION=4.0.1
           CLIENT_VERSION=$(jq -r '.compatibleTarkovVersion' core.json)
 
           echo "👽 CLIENT_VERSION = $CLIENT_VERSION"
