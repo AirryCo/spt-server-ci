@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/dotnet/sdk:9.0-bookworm-slim-arm64v8 AS server-builder
+FROM mcr.microsoft.com/dotnet/sdk:10.0-noble-arm64v AS server-builder
 ARG SPT_VERSION
 ARG SPT_BUILD_TYPE
 ARG SPT_BUILD_CONFIG
